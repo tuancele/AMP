@@ -1,0 +1,21 @@
+# Bỏ qua các file hệ thống
+.DS_Store
+Thumbs.db
+
+# Bỏ qua các file do trình soạn thảo code tạo ra
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Bỏ qua các thư viện cài đặt bằng Node.js/Composer
+node_modules/
+vendor/
+
+# Bỏ qua file log
+debug.log
+*.log
+
+# Bỏ qua các file nén
+*.zip
+*.rar

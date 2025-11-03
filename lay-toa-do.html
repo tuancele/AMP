@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Lấy Tọa Độ Ảnh (Image Map)</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --light-gray: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #343a40;
+            --success-color: #28a745;
+        }
+        html { background-color: #e9ecef; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0 !important;
+            padding: 20px;
+            background-color: #e9ecef;
+            color: var(--text-color);
+            display: block;
+            min-height: auto;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        h1, h2 {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+        .tool-panel {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+        }
+        .image-workspace { grid-column: 1 / 2; }
+        #image-uploader { margin-bottom: 15px; }
+        #image-uploader label { font-weight: 600; display: block; margin-bottom: 8px; }
+        #image-container {
+            position: relative;
+            width: 100%;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--light-gray);
+            overflow: hidden;
+        }
+        #image-display { display: none; width: 100%; height: auto; cursor: crosshair; }
+        #image-container .placeholder-text { color: #6c757d; }
+        .click-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(220, 53, 69, 0.8);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.7);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .results-panel { grid-column: 2 / 3; grid-row: 1 / 2; }
+        @media (max-width: 900px) { .results-panel { grid-column: 1 / 2; grid-row: 2 / 3; } }
+        .control-group { margin-bottom: 20px; }
+        .control-group label { display: block; font-weight: 600; margin-bottom: 8px; }
+        .control-group input[type="text"] { width: 100%; padding: 10px; font-size: 1rem; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        #output-css { width: 100%; height: 300px; font-family: monospace; font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 4px; resize: vertical; white-space: pre; }
+        .button-group { display: flex; gap: 10px; margin-top: 10px; }
+        .button-group button { flex-grow: 1; padding: 10px 15px; font-size: 1rem; font-weight: 600; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; }
+        #copy-btn { background-color: var(--success-color); color: white; }
+        #copy-btn:hover { background-color: #218838; }
+        #clear-btn { background-color: #6c757d; color: white; }
+        #clear-btn:hover { background-color: #5a6268; }
+        .button-group button:active { transform: scale(0.98); }
+        #click-history { margin-top: 20px; }
+        #history-list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; }
+        #history-list li { padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; font-family: monospace; }
+        #history-list li:last-child { border-bottom: none; }
+        #history-list li strong { color: var(--primary-color); }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="tool-panel image-workspace">
+            <h1>Công Cụ Lấy Tọa Độ Ảnh</h1>
+            <div id="image-uploader">
+                <label for="image-input">1. Chọn ảnh mặt bằng của bạn:</label>
+                <input type="file" id="image-input" accept="image/*">
+            </div>
+            <div id="image-container">
+                <img id="image-display" src="" alt="Image preview">
+                <span class="placeholder-text">Vui lòng tải ảnh lên để bắt đầu</span>
+            </div>
+        </div>
+        <div class="tool-panel results-panel">
+            <div class="control-group">
+                <label for="point-name">2. Đặt tên cho vùng (ví dụ: can-01):</label>
+                <input type="text" id="point-name" value="unit-01">
+            </div>
+            <div class="result-group">
+                <label for="output-css">3. Kết quả CSS:</label>
+                <textarea id="output-css" readonly>/* Click vào ảnh để bắt đầu... */</textarea>
+                <div class="button-group">
+                    <button id="copy-btn">Sao chép Code</button>
+                    <button id="clear-btn">Xóa tất cả</button>
+                </div>
+            </div>
+            <div id="click-history">
+                <h2>Lịch sử các điểm đã lấy:</h2>
+                <ul id="history-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const imageInput = document.getElementById('image-input');
+            const imageContainer = document.getElementById('image-container');
+            const imageDisplay = document.getElementById('image-display');
+            const placeholderText = imageContainer.querySelector('.placeholder-text');
+            const pointNameInput = document.getElementById('point-name');
+            const outputTextarea = document.getElementById('output-css');
+            const historyList = document.getElementById('history-list');
+            const copyBtn = document.getElementById('copy-btn');
+            const clearBtn = document.getElementById('clear-btn');
+
+            let points = [];
+            let pointCounter = 1;
+
+            imageInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imageDisplay.src = e.target.result;
+                        placeholderText.style.display = 'none';
+                        imageDisplay.style.display = 'block';
+                        clearAll();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            imageContainer.addEventListener('click', (event) => {
+                if (!imageDisplay.src || imageDisplay.getAttribute('src') === '') return;
+                const rect = imageDisplay.getBoundingClientRect();
+                const x_pixel = event.clientX - rect.left;
+                const y_pixel = event.clientY - rect.top;
+                const width = imageDisplay.offsetWidth;
+                const height = imageDisplay.offsetHeight;
+                const left_percent = (x_pixel / width) * 100;
+                const top_percent = (y_pixel / height) * 100;
+                const pointName = pointNameInput.value.trim() || `unit-${String(pointCounter).padStart(2, '0')}`;
+                points.push({ name: pointName, left: left_percent, top: top_percent });
+                renderOutput();
+                pointCounter++;
+                pointNameInput.value = `unit-${String(pointCounter).padStart(2, '0')}`;
+            });
+
+            copyBtn.addEventListener('click', () => {
+                outputTextarea.select();
+                document.execCommand('copy');
+                copyBtn.textContent = 'Đã sao chép!';
+                setTimeout(() => { copyBtn.textContent = 'Sao chép Code'; }, 2000);
+            });
+
+            clearBtn.addEventListener('click', clearAll);
+
+            function renderOutput() {
+                imageContainer.querySelectorAll('.click-point').forEach(p => p.remove());
+                let cssCode = '';
+                let historyHTML = '';
+                points.forEach((point, index) => {
+                    const pointDiv = document.createElement('div');
+                    pointDiv.className = 'click-point';
+                    pointDiv.style.left = `${point.left.toFixed(2)}%`;
+                    pointDiv.style.top = `${point.top.toFixed(2)}%`;
+                    pointDiv.textContent = index + 1;
+                    imageContainer.appendChild(pointDiv);
+                    cssCode += `.${point.name} {\n    left: ${point.left.toFixed(2)}%;\n    top: ${point.top.toFixed(2)}%;\n    /* Tùy chỉnh kích thước nếu cần */\n    width: 5%;\n    height: 5%;\n}\n/* ----- */\n`;
+                    historyHTML += `<li><strong>${point.name}:</strong> left: ${point.left.toFixed(2)}%; top: ${point.top.toFixed(2)}%;</li>`;
+                });
+                outputTextarea.value = cssCode;
+                historyList.innerHTML = historyHTML;
+                outputTextarea.scrollTop = outputTextarea.scrollHeight;
+                historyList.scrollTop = historyList.scrollHeight;
+            }
+
+            function clearAll() {
+                points = [];
+                pointCounter = 1;
+                pointNameInput.value = 'unit-01';
+                outputTextarea.value = '/* Click vào ảnh để bắt đầu... */';
+                renderOutput();
+            }
+        });
+    </script>
+
+</body>
+</html>
