@@ -106,54 +106,6 @@ add_action('after_switch_theme', 'tuancele_theme_activation_flush_rewrites');
 
 
 /**
- * 2. Tự động tạo nội dung cho file iframe của Turnstile CAPTCHA.
- *
- */
-function tuancele_generate_turnstile_iframe() {
-    if ( isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] === '/turnstile-iframe.html' ) {
-        // Lấy Site Key từ cài đặt
-        $options = get_option('tuancele_turnstile_settings', []);
-        $site_key = $options['site_key'] ?? '';
-
-        // In ra nội dung HTML và dừng lại
-        header('Content-Type: text/html; charset=utf-8');
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Turnstile AMP Iframe</title>
-            <script src="https://challenges.cloudflare.com/api/v0/api.js?onload=onTurnstileLoad" async defer></script>
-        </head>
-        <body>
-            <div id="turnstile-widget-container"></div>
-            <script>
-                function onTurnstileLoad() {
-                    if (typeof turnstile !== 'undefined') {
-                        turnstile.render('#turnstile-widget-container', {
-                            sitekey: '<?php echo esc_js($site_key); ?>',
-                            callback: function(token) {
-                                if (window.parent) {
-                                    window.parent.postMessage({
-                                        sentinel: 'amp',
-                                        type: 'turnstile-token',
-                                        token: token
-                                    }, '*');
-                                }
-                            },
-                        });
-                    }
-                }
-            </script>
-        </body>
-        </html>
-        <?php
-        exit(); // Dừng WordPress không xử lý tiếp
-    }
-}
-add_action('init', 'tuancele_generate_turnstile_iframe');
-
-
-/**
  * Đăng ký Custom Post Type cho Dịch vụ (Service)
  *
  */

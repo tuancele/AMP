@@ -2,6 +2,7 @@
 /**
  * inc/admin-settings-module.php
  * Module Class tạo tất cả các trang Cài đặt Theme trong khu vực Admin WP.
+ * ĐÃ CẬP NHẬT: Chuyển từ Turnstile sang Google reCAPTCHA v3.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,7 +32,10 @@ final class AMP_Admin_Settings_Module {
         add_submenu_page('tuancele-amp-settings', 'Cấu hình Schema Doanh nghiệp', 'Cấu hình Schema', 'manage_options', 'tuancele-amp-schema', [ $this, 'schema_settings_page' ]);
         add_submenu_page('tuancele-amp-settings', 'Cài đặt gửi mail (SMTP)', 'Cài đặt SMTP', 'manage_options', 'tuancele-amp-smtp', [ $this, 'smtp_settings_page' ]);
         add_submenu_page('tuancele-amp-settings', 'Cài đặt Cloudflare R2', 'Cài đặt R2', 'manage_options', 'tuancele-amp-r2', [ $this, 'r2_settings_page' ]);
-        add_submenu_page('tuancele-amp-settings', 'Cloudflare Turnstile (Captcha)', 'Cấu hình Captcha', 'manage_options', 'tuancele-amp-turnstile', [ $this, 'turnstile_settings_page' ]);
+        
+        // [THAY ĐỔI] Đổi tên trang Turnstile thành Google reCAPTCHA
+        add_submenu_page('tuancele-amp-settings', 'Google reCAPTCHA v3', 'Cấu hình Captcha', 'manage_options', 'tuancele-amp-recaptcha', [ $this, 'recaptcha_settings_page' ]);
+        
         add_submenu_page('tuancele-amp-settings', 'Cài đặt các Nút Nổi', 'Các Nút Nổi', 'manage_options', 'tuancele-amp-floating-buttons', [ $this, 'floating_buttons_page' ]);
     }
 
@@ -40,6 +44,7 @@ final class AMP_Admin_Settings_Module {
      *
      */
 
+    // ... (Hàm shortcode_guide_page() không thay đổi, giữ nguyên) ...
     public function shortcode_guide_page() {
         ?>
         <div class="wrap">
@@ -268,7 +273,8 @@ final class AMP_Admin_Settings_Module {
         <?php
     }
 
-    public function schema_settings_page() {
+    // ... (Các hàm schema_settings_page(), smtp_settings_page(), r2_settings_page() không đổi) ...
+     public function schema_settings_page() {
         ?>
         <div class="wrap">
             <h1>Cấu hình Schema Doanh nghiệp & Local SEO</h1>
@@ -301,12 +307,14 @@ final class AMP_Admin_Settings_Module {
         <?php
     }
 
-    public function turnstile_settings_page() {
+    // [THAY ĐỔI] Sửa hàm turnstile_settings_page() thành recaptcha_settings_page()
+    public function recaptcha_settings_page() {
         ?>
         <div class="wrap">
-            <h1>Cấu hình Cloudflare Turnstile (Captcha)</h1>
+            <h1>Cấu hình Google reCAPTCHA v3</h1>
+            <p>Đăng ký và lấy key tại đây: <a href="https://www.google.com/recaptcha/admin/create" target="_blank">Google reCAPTCHA Admin</a>. Chọn loại **reCAPTCHA v3**.</p>
             <form method="post" action="options.php">
-                <?php settings_fields('tuancele_amp_turnstile_group'); do_settings_sections('tuancele-amp-turnstile'); submit_button(); ?>
+                <?php settings_fields('tuancele_amp_recaptcha_group'); do_settings_sections('tuancele-amp-recaptcha'); submit_button(); ?>
             </form>
         </div>
         <?php
@@ -339,15 +347,14 @@ final class AMP_Admin_Settings_Module {
      *
      */
     public function register_all_settings() {
+        // ... (Các hàm register_setting cho integrations, schema, smtp, r2 không đổi) ...
         register_setting('tuancele_amp_integrations_group', 'tuancele_integrations_settings');
         add_settings_section('tuancele_integrations_zoho_section', 'Tích hợp Zoho CRM', null, 'tuancele-amp-integrations');
         add_settings_field('zoho_xnqsjsdp', 'Zoho Key (xnQsjsdp)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xnqsjsdp']);
         add_settings_field('zoho_xmiwtld', 'Zoho Key (xmIwtLD)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xmiwtld']);
 
-        // [NÂNG CẤP SCHEMA]
         register_setting('tuancele_amp_schema_group', 'tuancele_amp_schema_options', [ $this, 'sanitize_callback' ]);
         add_settings_section('tuancele_schema_main_section', 'Thông tin chung', null, 'tuancele-amp-schema');
-        
         $schema_fields_main = [
             'name'              => 'Tên Doanh nghiệp',
             'logo'              => 'URL Logo',
@@ -362,17 +369,14 @@ final class AMP_Admin_Settings_Module {
             'email'             => 'Email liên hệ',
             'description'       => 'Mô tả ngắn'
         ];
-        
         foreach ($schema_fields_main as $id => $field_data) {
             $args = is_array($field_data) ? array_merge($field_data, ['id' => $id]) : ['id' => $id];
             $label = is_array($field_data) ? $field_data['label'] : $field_data;
             add_settings_field($id, $label, [ $this, 'schema_field_callback' ], 'tuancele-amp-schema', 'tuancele_schema_main_section', $args);
         }
-
         add_settings_section('tuancele_schema_local_seo_section', 'Địa chỉ & Local SEO', null, 'tuancele-amp-schema');
         $schema_fields_local = ['streetAddress' => 'Địa chỉ', 'addressLocality' => 'Quận / Huyện', 'addressRegion' => 'Tỉnh / Thành phố', 'postalCode' => 'Mã bưu chính', 'latitude' => 'Vĩ độ', 'longitude' => 'Kinh độ', 'openingHours' => 'Giờ mở cửa'];
         foreach ($schema_fields_local as $id => $title) add_settings_field($id, $title, [ $this, 'schema_field_callback' ], 'tuancele-amp-schema', 'tuancele_schema_local_seo_section', ['id' => $id]);
-        
         add_settings_section('tuancele_schema_social_section', 'Mạng xã hội', null, 'tuancele-amp-schema');
         add_settings_field('sameAs', 'Các trang MXH', [ $this, 'schema_field_callback' ], 'tuancele-amp-schema', 'tuancele_schema_social_section', ['id' => 'sameAs']);
 
@@ -385,15 +389,29 @@ final class AMP_Admin_Settings_Module {
         add_settings_section('tuancele_r2_settings_section', 'Thông tin kết nối Cloudflare R2', [ $this, 'r2_section_callback' ], 'tuancele-amp-r2');
         $r2_fields = ['enable_r2' => ['label' => 'Kích hoạt R2', 'type' => 'checkbox'], 'access_key_id' => ['label' => 'Access Key ID'], 'secret_access_key' => ['label' => 'Secret Access Key', 'type' => 'password'], 'bucket' => ['label' => 'Tên Bucket'], 'endpoint' => ['label' => 'Endpoint'], 'public_url' => ['label' => 'Public URL'], 'delete_local_file' => ['label' => 'Xóa file gốc', 'type' => 'checkbox'], 'enable_webp_conversion' => ['label' => 'Chuyển sang WebP', 'type' => 'checkbox']];
         foreach ($r2_fields as $id => $field) add_settings_field('tuancele_r2_' . $id, $field['label'], [ $this, 'r2_field_callback' ], 'tuancele-amp-r2', 'tuancele_r2_settings_section', array_merge($field, ['id' => $id]));
-        
         add_settings_section('tuancele_r2_migration_section', 'Công cụ Di chuyển Dữ liệu cũ', [ $this, 'r2_migration_section_callback' ], 'tuancele-amp-r2');
         add_settings_field('tuancele_r2_migration_tool', 'Trạng thái & Hành động', [ $this, 'r2_migration_tool_callback' ], 'tuancele-amp-r2', 'tuancele_r2_migration_section');
 
-        register_setting('tuancele_amp_turnstile_group', 'tuancele_turnstile_settings');
-        add_settings_section('tuancele_turnstile_main_section', 'Khóa API Cloudflare', null, 'tuancele-amp-turnstile');
-        $turnstile_fields = ['site_key' => ['label' => 'Site Key'], 'secret_key' => ['label' => 'Secret Key', 'type' => 'password']];
-        foreach ($turnstile_fields as $id => $field) add_settings_field('tuancele_turnstile_' . $id, $field['label'], [ $this, 'turnstile_field_callback' ], 'tuancele-amp-turnstile', 'tuancele_turnstile_main_section', array_merge($field, ['id' => $id]));
 
+        // [THAY ĐỔI] Đăng ký setting cho reCAPTCHA
+        register_setting('tuancele_amp_recaptcha_group', 'tuancele_recaptcha_settings');
+        add_settings_section('tuancele_recaptcha_main_section', 'Khóa API Google reCAPTCHA v3', null, 'tuancele-amp-recaptcha');
+        $recaptcha_fields = [
+            'recaptcha_v3_site_key' => ['label' => 'Site Key (v3)'], 
+            'recaptcha_v3_secret_key' => ['label' => 'Secret Key (v3)', 'type' => 'password']
+        ];
+        foreach ($recaptcha_fields as $id => $field) {
+            add_settings_field(
+                'tuancele_recaptcha_' . $id, 
+                $field['label'], 
+                [ $this, 'recaptcha_field_callback' ], // Hàm callback mới
+                'tuancele-amp-recaptcha', 
+                'tuancele_recaptcha_main_section', 
+                array_merge($field, ['id' => $id])
+            );
+        }
+        
+        // ... (Hàm register_setting cho floating_buttons không đổi) ...
         register_setting('tuancele_amp_floating_buttons_group', 'tuancele_floating_buttons_options');
         add_settings_section('tuancele_floating_buttons_main_section', 'Thiết lập hiển thị', null, 'tuancele-amp-floating-buttons');
         add_settings_field('enable_call_button', 'Kích hoạt Nút Gọi', [ $this, 'floating_buttons_field_callback' ], 'tuancele-amp-floating-buttons', 'tuancele_floating_buttons_main_section', ['id' => 'enable_call_button']);
@@ -404,14 +422,13 @@ final class AMP_Admin_Settings_Module {
      * 4. CÁC HÀM CALLBACK VÀ SANITIZE CHO TỪNG LOẠI CÀI ĐẶT
      *
      */
-
+    
+    // ... (Các hàm callback cho integrations, schema, smtp, r2 không đổi) ...
     public function integrations_field_callback($args) {
         $options = get_option('tuancele_integrations_settings', []);
         $id = $args['id']; $value = $options[$id] ?? '';
         echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" />';
     }
-
-    // --- [NÂNG CẤP] Callbacks cho Schema ---
     public function schema_field_callback($args) {
         $options = get_option('tuancele_amp_schema_options', []);
         $id = $args['id'];
@@ -445,7 +462,6 @@ final class AMP_Admin_Settings_Module {
             echo '<p class="description">' . esc_html($args['desc']) . '</p>';
         }
     }
-
     public function sanitize_callback($input) {
         $new_input = [];
         if ( !is_array($input) ) return $new_input;
@@ -467,8 +483,6 @@ final class AMP_Admin_Settings_Module {
         }
         return $new_input;
     }
-
-    // --- Callbacks cho SMTP ---
     public function smtp_section_callback() {
         echo '<p>Sử dụng SMTP để tăng độ tin cậy khi gửi mail, tránh bị rơi vào hòm thư Spam.</p>';
         $status = get_option('tuancele_smtp_connection_status');
@@ -506,8 +520,6 @@ final class AMP_Admin_Settings_Module {
                  break;
         }
     }
-
-    // --- Callbacks cho R2 ---
     public function r2_section_callback() {
         echo '<p>Điền các thông tin dưới đây để kết nối website của bạn với dịch vụ lưu trữ Cloudflare R2.</p>';
         $status = get_option('tuancele_r2_connection_status');
@@ -536,11 +548,9 @@ final class AMP_Admin_Settings_Module {
                 break;
         }
     }
-
     public function r2_migration_section_callback() {
         echo '<p>Sử dụng công cụ này để tải lên Cloudflare R2 toàn bộ các tệp media đã được tải lên từ trước.</p>';
     }
-
     public function r2_migration_tool_callback() {
         $status = get_option('tuancele_r2_migration_status', ['running' => false, 'total' => 0, 'processed' => 0]);
         $is_running = $status['running'];
@@ -555,21 +565,22 @@ final class AMP_Admin_Settings_Module {
         <div id="r2-migration-tool">
             <div id="r2-migration-status"></div>
             <div id="r2-progress-bar-container"><div id="r2-progress-bar">0%</div></div>
-            <p style="margin-top:15px">
-                <button type="button" class="button button-primary" id="start-r2-migration" <?php if ($is_running || $local_count === 0) echo 'disabled'; ?>>Bắt đầu Di chuyển <?php echo $local_count; ?> tệp</button>
-                <button type="button" class="button" id="cancel-r2-migration" <?php if (!$is_running) echo 'disabled'; ?>>Hủy bỏ</button>
-            </p>
+<p style="margin-top:15px">
+            <button type="button" class="button button-primary" id="start-r2-migration" <?php if ($is_running || $local_count === 0) echo 'disabled'; ?>>Bắt đầu Di chuyển <?php echo $local_count; ?> tệp</button>
+            <button type="button" class="button" id="cancel-r2-migration" <?php if (!$is_running) echo 'disabled'; ?>>Hủy bỏ</button>
+            <button type="button" class="button" id="recheck-r2-migration" style="margin-left: 15px;" <?php if ($is_running) echo 'disabled'; ?>><?php echo $is_running ? 'Đang chạy...' : 'Kiểm tra lại'; ?></button>
+        </p>
         </div>
         <?php
     }
 
-    // --- Callbacks cho Turnstile ---
-    public function turnstile_field_callback($args) {
-        $options = get_option('tuancele_turnstile_settings', []);
+    // [THAY ĐỔI] Hàm callback mới cho reCAPTCHA
+    public function recaptcha_field_callback($args) {
+        $options = get_option('tuancele_recaptcha_settings', []);
         $id = $args['id'];
         $value = $options[$id] ?? '';
         $type = $args['type'] ?? 'text';
-        echo '<input type="' . esc_attr($type) . '" id="tuancele_turnstile_' . esc_attr($id) . '" name="tuancele_turnstile_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" />';
+        echo '<input type="' . esc_attr($type) . '" id="tuancele_recaptcha_' . esc_attr($id) . '" name="tuancele_recaptcha_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" />';
     }
 
     // --- Callbacks cho Floating Buttons ---
@@ -580,7 +591,7 @@ final class AMP_Admin_Settings_Module {
         echo '<label><input type="checkbox" name="tuancele_floating_buttons_options[' . esc_attr($id) . ']" value="on" ' . checked($checked, true, false) . '></label>';
     }
 
-    /**
+ /**
      * 5. HÀM TỔNG HỢP ĐỂ TẢI SCRIPT CHO CÁC TRANG CÀI ĐẶT
      *
      */
@@ -604,10 +615,16 @@ final class AMP_Admin_Settings_Module {
         }
 
         if ($hook === 'cai-dat-amp_page_tuancele-amp-r2') {
+            
+            // [SỬA LỖI] Sử dụng get_site_url() để lấy đường dẫn gốc,
+            // tránh bị các plugin cache/offload khác rewrite đường dẫn.
+            // Điều này đảm bảo file JS luôn được tải từ server local.
+            $local_js_url = get_site_url(null, 'wp-content/themes/amp/inc/r2/admin-r2-migration.js');
+
             wp_enqueue_script(
                 'tuancele-r2-migration',
-                get_template_directory_uri() . '/assets/js/admin-r2-migration.js',
-                ['jquery'], '1.1', true
+                $local_js_url, // Sử dụng đường dẫn gốc, tuyệt đối
+                ['jquery'], '1.2', true // Đổi version lên 1.2 để tránh cache
             );
 
             $nonce_data_script = sprintf(
@@ -619,5 +636,4 @@ final class AMP_Admin_Settings_Module {
             wp_add_inline_script('tuancele-r2-migration', $nonce_data_script, 'before');
         }
     }
-
-} // Kết thúc Class
+    }

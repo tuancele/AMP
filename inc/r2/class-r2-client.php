@@ -1,5 +1,6 @@
 <?php
 // File: inc/r2/class-r2-client.php
+// ĐÃ SỬA LỖI: Buộc tải 'vendor/autoload.php' để WP-Cron có thể tìm thấy class S3Client.
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -44,6 +45,19 @@ final class Tuancele_R2_Client {
             if (empty($this->options['access_key_id']) || empty($this->options['secret_access_key']) || empty($this->options['endpoint'])) {
                 return null;
             }
+            
+            // [SỬA LỖI] Đảm bảo AWS SDK được tải, đặc biệt trong ngữ cảnh WP-Cron
+            if ( ! class_exists('Aws\S3\S3Client') ) {
+                $autoload_path = get_template_directory() . '/vendor/autoload.php';
+                if ( file_exists( $autoload_path ) ) {
+                    require_once $autoload_path;
+                } else {
+                    // Nếu không tìm thấy SDK, ghi log và trả về null
+                    error_log('R2 Client Error: AWS SDK (vendor/autoload.php) not found.');
+                    return null;
+                }
+            }
+
             $this->s3_client = new S3Client([
                 'region' => 'auto',
                 'version' => 'latest',
@@ -61,6 +75,17 @@ final class Tuancele_R2_Client {
         if (empty($settings['access_key_id']) || empty($settings['secret_access_key']) || empty($settings['bucket']) || empty($settings['endpoint'])) {
             return ['success' => false, 'message' => 'Thất bại - Vui lòng điền đầy đủ các trường bắt buộc.'];
         }
+        
+        // [SỬA LỖI] Đảm bảo SDK được tải cho việc test connection
+        if ( ! class_exists('Aws\S3\S3Client') ) {
+            $autoload_path = get_template_directory() . '/vendor/autoload.php';
+            if ( file_exists( $autoload_path ) ) {
+                require_once $autoload_path;
+            } else {
+                return ['success' => false, 'message' => 'Lỗi nghiêm trọng: Không tìm thấy file vendor/autoload.php.'];
+            }
+        }
+
         try {
             $s3 = new S3Client([
                 'region' => 'auto', 'version' => 'latest', 'endpoint' => $settings['endpoint'],

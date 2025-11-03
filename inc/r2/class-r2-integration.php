@@ -1,5 +1,6 @@
 <?php
 // File: inc/r2/class-r2-integration.php
+// ĐÃ HOÀN THIỆN: Bổ sung các hook cho công cụ Migration.
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -26,6 +27,9 @@ final class Tuancele_R2_Integration {
         require_once $r2_dir . 'class-r2-actions.php';
         require_once $r2_dir . 'class-r2-rewriter.php';
         
+        // [THÊM MỚI] Tải file logic migration
+        require_once $r2_dir . 'class-r2-migration.php';
+        
         // Tải AWS SDK
         if (file_exists(get_template_directory() . '/vendor/autoload.php')) {
             require_once get_template_directory() . '/vendor/autoload.php';
@@ -34,10 +38,12 @@ final class Tuancele_R2_Integration {
 
     private function init_hooks() {
         $client = Tuancele_R2_Client::get_instance();
+        
+        // [THAY ĐỔI] Khởi tạo $actions ở phạm vi rộng hơn
+        $actions = new Tuancele_R2_Actions();
 
-        // Chỉ thêm các hook nếu R2 được bật
+        // Chỉ thêm các hook (upload mới, xóa, viết lại URL) nếu R2 được bật
         if ($client->is_enabled()) {
-            $actions = new Tuancele_R2_Actions();
             $rewriter = new Tuancele_R2_Rewriter();
 
             // Hooks cho upload và delete
@@ -52,6 +58,22 @@ final class Tuancele_R2_Integration {
 
         // Hook để kiểm tra kết nối khi lưu cài đặt
         add_action('update_option_tuancele_r2_settings', [$this, 'handle_settings_update'], 10, 2);
+        
+        // [THÊM MỚI] Kích hoạt các hook cho Công cụ Migration
+        // Chúng ta cần đăng ký các hook này ngay cả khi R2 bị tắt,
+        // để người dùng có thể truy cập trang và bắt đầu quá trình (nếu họ muốn).
+        if (is_admin()) {
+            // Khởi tạo lớp Migration và truyền đối tượng $actions vào
+            $migration = new Tuancele_R2_Migration($actions);
+            
+            // Đăng ký 3 hook AJAX mà file admin-r2-migration.js đang gọi
+            add_action('wp_ajax_tuancele_r2_start_migration', [$migration, 'ajax_start_migration']);
+            add_action('wp_ajax_tuancele_r2_cancel_migration', [$migration, 'ajax_cancel_migration']);
+            add_action('wp_ajax_tuancele_r2_get_migration_status', [$migration, 'ajax_get_status']);
+            
+            // Đăng ký hook WP-Cron để chạy từng batch
+            add_action('tuancele_r2_run_migration_batch', [$migration, 'process_batch']);
+        }
     }
     
     public function handle_settings_update($old_value, $new_value) {

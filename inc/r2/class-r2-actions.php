@@ -1,7 +1,12 @@
 <?php
 // File: inc/r2/class-r2-actions.php
+// ĐÃ SỬA LỖI: 
+// 1. Xóa tham số 'ACL' không tương thích với R2.
+// 2. Thêm 'use Aws\S3\Exception\S3Exception' để bắt lỗi chính xác.
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+use Aws\S3\Exception\S3Exception; // [THÊM MỚI]
 
 final class Tuancele_R2_Actions {
 
@@ -47,7 +52,7 @@ final class Tuancele_R2_Actions {
             return $updated_metadata; // Trả về metadata đã cập nhật ngay cả khi client lỗi.
         }
         
-        $upload_dir = wp_upload_dir();
+        $upload_dir = wp_get_upload_dir();
         $success = true;
 
         foreach ($files_to_process as $file) {
@@ -62,13 +67,19 @@ final class Tuancele_R2_Actions {
                     'Bucket'      => $this->options['bucket'],
                     'Key'         => $s3_key,
                     'SourceFile'  => $local_path,
-                    'ACL'         => 'public-read',
+                    // 'ACL'         => 'public-read', // [SỬA LỖI] ĐÃ XÓA DÒNG NÀY
                     'ContentType' => $file['mime'],
                 ]);
-            } catch (Exception $e) {
+            } catch (S3Exception $e) {
+                // [SỬA LỖI] Bắt lỗi S3Exception cụ thể
                 $success = false;
-                error_log("R2 Offload Error for attachment {$attachment_id}: " . $e->getMessage());
-                break; // Dừng ngay nếu có lỗi xảy ra.
+                error_log("R2 Offload S3Exception for attachment {$attachment_id}: " . $e->getAwsErrorMessage());
+                break;
+            } catch (Exception $e) {
+                // Bắt các lỗi chung khác
+                $success = false;
+                error_log("R2 Offload Generic Error for attachment {$attachment_id}: " . $e->getMessage());
+                break;
             }
         }
 
@@ -138,8 +149,10 @@ final class Tuancele_R2_Actions {
                     'Bucket' => $this->options['bucket'],
                     'Delete' => ['Objects' => $keys_to_delete]
                 ]);
+            } catch (S3Exception $e) { // [SỬA LỖI] Bắt S3Exception
+                error_log('R2 Delete S3Exception: ' . $e->getAwsErrorMessage());
             } catch (Exception $e) {
-                error_log('R2 Delete Error: ' . $e->getMessage());
+                error_log('R2 Delete Generic Error: ' . $e->getMessage());
             }
         }
     }

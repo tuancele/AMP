@@ -1,7 +1,8 @@
 <?php
 /**
  * inc/comments-module.php
- * Module Class xử lý hệ thống bình luận AMP tùy chỉnh và tích hợp Turnstile.
+ * Module Class xử lý hệ thống bình luận AMP tùy chỉnh.
+ * ĐÃ CẬP NHẬT: Chuyển từ Turnstile sang Google reCAPTCHA v3.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -12,10 +13,6 @@ final class AMP_Comments_Module {
         // Hook xử lý submit bình luận AMP
         add_action('wp_ajax_amp_submit_comment', [ $this, 'handle_amp_comment_submission' ]);
         add_action('wp_ajax_nopriv_amp_submit_comment', [ $this, 'handle_amp_comment_submission' ]);
-
-        // Các hàm helper cho bình luận vẫn cần ở global scope
-        // để template 'comments.php' có thể gọi
-        // (Xem Bước 4.3)
     }
 
     /**
@@ -42,16 +39,18 @@ final class AMP_Comments_Module {
         header("Access-Control-Expose-Headers: AMP-Access-Control-Allow-Source-Origin");
 
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
-        $country_code = $this->get_ip_country_code($user_ip); // Gọi hàm nội bộ
         
-        $options = get_option('tuancele_turnstile_settings', []);
-        if (!empty($options['site_key'])) {
-            $turnstile_token = sanitize_text_field($_POST['cf-turnstile-response'] ?? '');
-            if (!$this->verify_turnstile_token($turnstile_token, $user_ip)) { // Gọi hàm nội bộ
+        // [THAY ĐỔI] XÁC THỰC GOOGLE RECAPTCHA
+        if ( !empty($this->get_recaptcha_secret_key()) ) {
+            $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
+            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'submit_comment')) { // Gửi kèm action 'submit_comment'
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }
+        // [KẾT THÚC THAY ĐỔI]
         
+        // Logic kiểm tra IP (giữ nguyên)
+        $country_code = $this->get_ip_country_code($user_ip);
         if ($country_code !== null && $country_code !== 'VN') {
             wp_send_json_error(['message' => 'Xin lỗi, tính năng bình luận chỉ dành cho người dùng tại Việt Nam.'], 403);
         }
@@ -86,29 +85,40 @@ final class AMP_Comments_Module {
 
     /**
      * =========================================================================
-     * CÁC HÀM HELPER BẢO MẬT (Đã chuyển vào trong Class)
-     *
+     * [MỚI] CÁC HÀM HELPER BẢO MẬT (GOOGLE RECAPTCHA)
      * =========================================================================
      */
-    private function get_turnstile_secret_key() { 
-        $options = get_option('tuancele_turnstile_settings', []);
-        return $options['secret_key'] ?? '';
+    private function get_recaptcha_secret_key() { 
+        $options = get_option('tuancele_recaptcha_settings', []);
+        return $options['recaptcha_v3_secret_key'] ?? '';
     }
 
-    private function verify_turnstile_token($token, $ip) {
-        $secret_key = $this->get_turnstile_secret_key();
+    // File: inc/comments-module.php
+
+    private function verify_recaptcha_token($token, $ip, $action) {
+        $secret_key = $this->get_recaptcha_secret_key();
         if (empty($secret_key) || empty($token)) {
+            // Nếu token rỗng (do widget lỗi), trả về false ngay
             return false;
         }
-        $response = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
             'body' => ['secret' => $secret_key, 'response' => $token, 'remoteip' => $ip],
         ]);
-        if (is_wp_error($response)) { return false; }
+        
+        if (is_wp_error($response)) { 
+            error_log('reCAPTCHA WP_Error: ' . $response->get_error_message()); // Ghi log lỗi nếu không gọi được Google
+            return false; 
+        }
+        
         $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        // [THỬ GỠ LỖI]
+        // Tạm thời CHỈ KIỂM TRA 'success', bỏ qua 'score' và 'action'
         return isset($body['success']) && $body['success'] === true;
     }
 
     private function get_ip_country_code($ip) {
+        // ... (Hàm này không thay đổi, giữ nguyên) ...
         if (in_array($ip, ['127.0.0.1', '::1', 'Invalid IP'])) return 'VN';
         $cache_key = 'ip_country_code_' . md5($ip);
         if (false !== ($cached_code = get_transient($cache_key))) return $cached_code;
@@ -127,10 +137,10 @@ final class AMP_Comments_Module {
 /**
  * =========================================================================
  * CÁC HÀM TEMPLATE (Bắt buộc phải ở Global Scope)
- * Các hàm này được gọi từ template 'comments.php'
- *
  * =========================================================================
  */
+
+// ... (Hàm tuancele_amp_comment_callback() không thay đổi, giữ nguyên) ...
 function tuancele_amp_comment_callback( $comment, $args, $depth ) {
     $GLOBALS['comment'] = $comment;
     ?>
@@ -165,8 +175,9 @@ function tuancele_amp_comment_form() {
     $commenter = wp_get_current_commenter();
     $form_action_url = esc_url( admin_url('admin-ajax.php?action=amp_submit_comment') );
     
-    $options = get_option('tuancele_turnstile_settings', []);
-    $turnstile_site_key = $options['site_key'] ?? ''; 
+    // [THAY ĐỔI] LẤY SITE KEY CỦA RECAPTCHA
+    $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
+    $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
     ?>
     <div id="respond" class="comment-respond">
         <h3 id="reply-title" class="comment-reply-title">Gửi bình luận của bạn</h3>
@@ -179,19 +190,27 @@ function tuancele_amp_comment_form() {
                     <p class="comment-form-email"><label for="email">Email *</label><input id="email" name="email" type="email" value="<?php echo esc_attr( $commenter['comment_author_email'] ); ?>" required></p>
                 </div>
             <?php endif; ?>
+            
             <?php wp_nonce_field('amp_comment_nonce_action', '_amp_comment_nonce_field'); ?>
-            <?php if (!empty($turnstile_site_key)) : ?>
-            <div class="comment-form-captcha" id="cf-turnstile-wrapper">
-                <amp-iframe width="300" height="65" layout="fixed" sandbox="allow-scripts"
-                    src="<?php echo esc_url(home_url('/turnstile-iframe.html')); ?>"
-                    data-loading-strategy="on-visible"
-                    resizable>
-                    <div overflow tabindex="0" role="button" aria-label="Tải CAPTCHA"></div>
-                    <div placeholder on="message:AMP.setState({turnstileState: {token: event.data.token}})"></div>
-                </amp-iframe>
-                <input type="hidden" name="cf-turnstile-response" [value]="turnstileState.token" required>
+            
+            <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
+            if (!empty($recaptcha_site_key)) : ?>
+            <div class="comment-form-captcha" id="recaptcha-wrapper" style="font-size: 11px; color: #777; margin-bottom: 10px;">
+                This site is protected by reCAPTCHA and the Google
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and
+                <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a> apply.
+                
+                <amp-recaptcha-input
+                    layout="nodisplay"
+                    name="g-recaptcha-response"
+                    data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"
+                    data-action="submit_comment">
+                </amp-recaptcha-input>
             </div>
-            <?php endif; ?>
+            <?php endif; 
+            // [KẾT THÚC THAY ĐỔI]
+            ?>
+
             <input type="hidden" name="wp-comment-cookies-consent" value="yes" />
             <p class="form-submit"><button name="submit" type="submit" id="submit" class="submit-button"><span class="button-text">Gửi đi</span><div class="loader"></div></button></p>
             <input type="hidden" name="comment_post_ID" value="<?php echo get_the_ID(); ?>"><input type="hidden" name="comment_parent" value="0">

@@ -369,14 +369,19 @@ final class AMP_Shortcodes_Module {
         return $content;
     }
 
-    /**
+/**
      * SHORTCODE [dang_ky_sdt]
-     *
+     * ĐÃ CẬP NHẬT: Chuyển sang Google reCAPTCHA v3
      */
     public function phone_registration($atts) {
         $args = shortcode_atts(['tieu_de' => 'Để lại số điện thoại, chúng tôi sẽ gọi lại ngay!', 'nut_gui' => 'Yêu Cầu Gọi Lại'], $atts);
         $form_action_url = esc_url(admin_url('admin-ajax.php?action=amp_submit_phone_only'));
         $current_page_link = is_singular() ? get_permalink() : home_url(add_query_arg(null, null));
+        
+        // [THAY ĐỔI] LẤY SITE KEY CỦA RECAPTCHA
+        $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
+        $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
+
         ob_start();
         ?>
         <div class="amp-form-container amp-form-phone-only">
@@ -387,6 +392,21 @@ final class AMP_Shortcodes_Module {
                     <input type="tel" id="form-phone-only-<?php echo uniqid(); ?>" name="Mobile" placeholder="Nhập số điện thoại của bạn" required pattern="(03|05|07|08|09)[0-9]{8}">
                     <div visible-when-invalid="valueMissing" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Vui lòng nhập số điện thoại.</div>
                     <div visible-when-invalid="patternMismatch" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Số điện thoại không đúng định dạng.</div>
+
+                    <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
+                    if (!empty($recaptcha_site_key)) : ?>
+                    <div class="recaptcha-notice" style="text-align: center; font-size: 10px; color: #777; margin-top: 5px;">
+                        This site is protected by reCAPTCHA.
+                    </div>
+                    <amp-recaptcha-input
+                        layout="nodisplay"
+                        name="g-recaptcha-response"
+                        data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"
+                        data-action="phone_submit">
+                    </amp-recaptcha-input>
+                    <?php endif; 
+                    // [KẾT THÚC THAY ĐỔI]
+                    ?>
                 </div>
                 <?php wp_nonce_field('amp_form_nonce_action', '_amp_form_nonce_field'); ?>
                 <input type="hidden" name="link" value="<?php echo esc_url($current_page_link); ?>">

@@ -1,5 +1,6 @@
 <?php
-// File: inc/r2/class-r2-migration.php (PHIÊN BẢN SỬA LỖI DỨT ĐIỂM)
+// File: inc/r2/class-r2-migration.php
+// ĐÃ SỬA LỖI: Thay thế spawn_cron() bằng wp_remote_post() để kích hoạt cron job đáng tin cậy hơn.
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -8,7 +9,7 @@ final class Tuancele_R2_Migration {
     const STATUS_OPTION = 'tuancele_r2_migration_status';
     const QUEUE_TRANSIENT = 'tuancele_r2_migration_queue';
     const BATCH_SIZE = 5;
-    const NONCE_ACTION = 'r2_migration_nonce'; // Định nghĩa action của nonce một lần duy nhất
+    const NONCE_ACTION = 'r2_migration_nonce';
 
     private $r2_actions;
 
@@ -16,20 +17,25 @@ final class Tuancele_R2_Migration {
         $this->r2_actions = $r2_actions;
     }
 
-    /**
-     * Hàm kiểm tra Nonce tùy chỉnh để cung cấp thông báo lỗi chi tiết.
-     */
     private function verify_nonce() {
         $nonce_value = $_POST['_wpnonce'] ?? '';
-
         if ( ! wp_verify_nonce( $nonce_value, self::NONCE_ACTION ) ) {
-            // Ghi log lỗi để có thể kiểm tra trên server nếu cần
             error_log('R2 Migration - Nonce Verification Failed. Received Nonce: ' . $nonce_value);
-            // Trả về lỗi JSON chi tiết cho trình duyệt
             wp_send_json_error( [
                 'message' => 'Lỗi bảo mật: Xác thực không thành công. Vui lòng tải lại trang (Hard Refresh: Ctrl+Shift+R) và thử lại.',
-            ], 403 ); // 403 Forbidden là mã lỗi chính xác hơn cho trường hợp này
+            ], 403 );
         }
+    }
+
+    /**
+     * [SỬA LỖI] Kích hoạt WP-Cron bằng một yêu cầu non-blocking
+     */
+    private function trigger_cron() {
+        wp_remote_post(site_url('wp-cron.php?doing_wp_cron'), [
+            'timeout'   => 0.01,
+            'blocking'  => false,
+            'sslverify' => false,
+        ]);
     }
 
     public function ajax_start_migration() {
@@ -49,7 +55,10 @@ final class Tuancele_R2_Migration {
         update_option(self::STATUS_OPTION, ['running' => true, 'total' => count($attachment_ids), 'processed' => 0]);
 
         wp_schedule_single_event(time(), 'tuancele_r2_run_migration_batch');
-        spawn_cron();
+        
+        // [SỬA LỖI] Kích hoạt cron
+        $this->trigger_cron();
+        
         wp_send_json_success();
     }
 
@@ -66,7 +75,9 @@ final class Tuancele_R2_Migration {
 
         $batch = array_splice($queue, 0, self::BATCH_SIZE);
         foreach ($batch as $attachment_id) {
-            $this->r2_actions->offload_attachment($attachment_id);
+            if (method_exists($this->r2_actions, 'offload_attachment')) {
+                 $this->r2_actions->offload_attachment($attachment_id);
+            }
         }
 
         $status['processed'] += count($batch);
@@ -75,7 +86,10 @@ final class Tuancele_R2_Migration {
 
         if (!empty($queue)) {
             wp_schedule_single_event(time() + 2, 'tuancele_r2_run_migration_batch');
-            spawn_cron();
+            
+            // [SỬA LỖI] Kích hoạt cron
+            $this->trigger_cron();
+
         } else {
             update_option(self::STATUS_OPTION, array_merge($status, ['running' => false]));
         }
@@ -95,6 +109,21 @@ final class Tuancele_R2_Migration {
         $this->verify_nonce();
         
         $status = get_option(self::STATUS_OPTION, ['running' => false, 'total' => 0, 'processed' => 0]);
+        
+        $local_query = new WP_Query([
+            'post_type'      => 'attachment', 'post_status'    => 'inherit', 'posts_per_page' => -1, 'fields'         => 'ids',
+            'meta_query'     => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']],
+        ]);
+        $local_count = $local_query->post_count;
+        
+        $status['local_files_remaining'] = $local_count;
+
+        if ($status['running'] === false) {
+             $status['total'] = $local_count;
+             $status['processed'] = 0;
+             update_option(self::STATUS_OPTION, $status);
+        }
+        
         wp_send_json_success($status);
     }
 }
