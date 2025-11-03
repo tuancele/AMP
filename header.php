@@ -27,13 +27,14 @@
     <script async custom-element="amp-position-observer" src="https://cdn.ampproject.org/v0/amp-position-observer-0.1.js"></script>
     <script async custom-element="amp-animation" src="https://cdn.ampproject.org/v0/amp-animation-0.1.js"></script>
     <style amp-custom><?php do_action('amp_custom_css'); ?></style>
-
-
+    <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
 
     <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
-
+    <!-- Google Tag Manager -->
+    <amp-analytics config="https://www.googletagmanager.com/amp.json?id=GTM-WMXX42HC&gtm.url=SOURCE_URL" data-credentials="include"></amp-analytics>
+    <amp-analytics config="https://www.googletagmanager.com/amp.json?id=GTM-TGCPPD2K&gtm.url=SOURCE_URL" data-credentials="include"></amp-analytics>
 
     <amp-state id="pwaStatus">
         <script type="application/json">

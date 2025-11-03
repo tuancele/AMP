@@ -1,17 +1,18 @@
 <?php
 /**
- * inc/core-setup.php
- * Contains core setup functions, cleanup, and basic AMP handling for the theme.
+ * inc/amp-core.php
+ * Chứa toàn bộ logic lõi để xử lý và dọn dẹp AMP.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 // =========================================================================
-// LCP & CORE SETUP
+// LCP & CORE AMP CLEANUP
 // =========================================================================
 
 /**
  * Preload the Largest Contentful Paint (LCP) image.
+ *
  */
 function tuancele_responsive_lcp_preload_final() {
     $image_id = 0;
@@ -59,6 +60,7 @@ add_action( 'wp_head', 'tuancele_responsive_lcp_preload_final', 5 );
 
 /**
  * Remove unwanted default WordPress actions for AMP optimization.
+ *
  */
 function tuancele_remove_unwanted_scripts_and_links() {
     remove_action( 'wp_head', 'wp_resource_hints', 2 );
@@ -87,6 +89,7 @@ add_action('init', 'tuancele_remove_unwanted_scripts_and_links', 9999);
 
 /**
  * Start output buffering to capture and clean HTML.
+ *
  */
 function amp_start_output_buffer() {
     ob_start('amp_final_output_cleanup');
@@ -95,6 +98,7 @@ add_action('template_redirect', 'amp_start_output_buffer', -1);
 
 /**
  * End output buffering and flush the cleaned output.
+ *
  */
 function amp_end_output_buffer() {
     if (ob_get_level() > 0) {
@@ -105,8 +109,7 @@ add_action('shutdown', 'amp_end_output_buffer');
 
 /**
  * Clean up the buffered HTML output for AMP compliance.
- * [FINAL CANONICAL FIX] This function now also acts as a fail-safe to ensure
- * a canonical tag is always present and correctly placed.
+ *
  */
 function amp_final_output_cleanup($buffer) {
     // --- BẮT ĐẦU: LOGIC XỬ LÝ CANONICAL ---
@@ -176,50 +179,8 @@ function amp_final_output_cleanup($buffer) {
 }
 
 /**
- * Basic theme setup.
- */
-function amp_custom_theme_setup() {
-    register_nav_menus([
-        'primary'       => __('Primary Menu', 'tuancele-amp'),
-        'footer_menu_1' => __('Footer Links 1', 'tuancele-amp')
-    ]);
-    add_theme_support('post-thumbnails');
-    add_theme_support('title-tag');
-    add_theme_support('custom-logo', [
-        'height'      => 100,
-        'width'       => 400,
-        'flex-height' => true,
-        'flex-width'  => true,
-    ]);
-    add_image_size('archive-thumb', 400, 229, true);
-}
-add_action('after_setup_theme', 'amp_custom_theme_setup');
-
-/**
- * Disable admin bar on the frontend.
- */
-add_filter('show_admin_bar', '__return_false');
-
-/**
- * Dequeue unnecessary scripts and styles.
- */
-function amp_dequeue_scripts_and_styles() {
-    wp_dequeue_style('wp-block-library');
-    wp_deregister_style('wp-block-library');
-    wp_dequeue_style('global-styles');
-    wp_deregister_style('global-styles');
-    if (!is_admin()) {
-        wp_deregister_script('jquery');
-        wp_dequeue_script('jquery');
-        wp_deregister_script('jquery-migrate');
-        wp_dequeue_script('jquery-migrate');
-    }
-}
-add_action('wp_enqueue_scripts', 'amp_dequeue_scripts_and_styles', 100);
-
-/**
  * [LCP OPTIMIZER] Đánh dấu hình ảnh đầu tiên trong nội dung là ứng viên LCP.
- * Chạy rất sớm để đảm bảo marker có mặt trước các bộ lọc khác.
+ *
  */
 function tuancele_mark_first_content_image_as_lcp($content) {
     // Chỉ chạy trên các trang đơn (bài viết, trang tĩnh), trong vòng lặp chính, và chỉ một lần.
@@ -237,7 +198,7 @@ add_filter('the_content', 'tuancele_mark_first_content_image_as_lcp', 1);
 
 /**
  * Filter content to convert standard HTML tags to their AMP equivalents.
- * [LCP OPTIMIZED] Bây giờ sẽ thêm data-fetchpriority="high" vào ảnh nội dung đầu tiên.
+ *
  */
 function amp_filter_the_content($content) {
     // Convert <img> to <amp-img>
@@ -283,13 +244,14 @@ add_filter('the_content', 'amp_filter_the_content', 99);
  * =========================================================================
  * CONDITIONAL ASSET LOADING (AMP SCRIPTS & META)
  * =========================================================================
+ *
  */
 
 /**
  * Conditionally register required AMP component scripts.
  */
 function tuancele_register_conditional_assets() {
-    if ( !is_singular() && !is_front_page() && !is_archive() && !is_home() ) return; // Mở rộng điều kiện cho các trang khác
+    if ( !is_singular() && !is_front_page() && !is_archive() && !is_home() ) return;
     
     global $post;
     $content = '';
@@ -326,14 +288,12 @@ function tuancele_register_conditional_assets() {
     }
 
     // [FIX LỖI] Tự động kiểm tra và tải script cho Event Bar
-    // Thực hiện một truy vấn nhẹ để xem có sự kiện nào được publish không
     $events_exist = get_posts([
         'post_type' => 'event',
         'post_status' => 'publish',
-        'posts_per_page' => 1, // Chỉ cần 1 để biết là có
-        'fields' => 'ids', // Truy vấn nhẹ nhất có thể
+        'posts_per_page' => 1,
+        'fields' => 'ids',
     ]);
-    // Nếu có sự kiện, luôn tải amp-carousel
     if (!empty($events_exist)) {
         $scripts_to_load['amp-carousel'] = 'https://cdn.ampproject.org/v0/amp-carousel-0.2.js';
     }
@@ -352,16 +312,12 @@ function tuancele_register_conditional_assets() {
         $GLOBALS['conditional_amp_meta'] = array_unique($meta_to_load);
     }
 }
-// Giữ nguyên add_action
 add_action( 'wp', 'tuancele_register_conditional_assets' );
 
 /**
  * Print the conditionally required AMP component scripts in the <head>.
  */
 function tuancele_print_conditional_amp_scripts() {
-    // These are loaded globally in header.php, so this function can be a fallback
-    // or be used to consolidate all script loading logic.
-    // For now, let's just print what was detected.
     if ( ! empty( $GLOBALS['conditional_amp_scripts'] ) && is_array( $GLOBALS['conditional_amp_scripts'] ) ) {
         foreach ( $GLOBALS['conditional_amp_scripts'] as $element => $src ) {
             if (!empty($element) && !empty($src)) {
@@ -404,30 +360,3 @@ function tuancele_override_caption_shortcode_output( $output, $attr, $content ) 
     return $html;
 }
 add_filter( 'img_caption_shortcode', 'tuancele_override_caption_shortcode_output', 10, 3 );
-
-/**
- * Inject the content of the AMP CSS file.
- */
-function tuancele_inject_amp_css_from_file() {
-    $theme_dir = get_template_directory();
-    $min_css_path = $theme_dir . '/css/amp-custom.min.css';
-    $css_path = $theme_dir . '/css/amp-custom.css';
-    $css_content = '';
-
-    if ( file_exists( $min_css_path ) && filesize( $min_css_path ) > 0 ) {
-        $css_content = file_get_contents( $min_css_path );
-    }
-    elseif ( file_exists( $css_path ) && filesize( $css_path ) > 0 ) {
-        $css_content = file_get_contents( $css_path );
-    }
-
-    if ( ! empty( trim( $css_content ) ) ) {
-        echo trim($css_content);
-    } else {
-        echo '/* ERROR: Could not find a valid CSS file. */';
-    }
-}
-// [FIX] This hook must match the one used in header.php
-add_action('amp_custom_css', 'tuancele_inject_amp_css_from_file');
-
-?>
