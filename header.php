@@ -2,6 +2,10 @@
 <?php
 /**
  * header.php - Phiên bản tối ưu UX, đã loại bỏ thanh progress bar cũ.
+ *
+ * [SỬA LỖI EVENT BAR]
+ * - Đã xóa câu lệnh if (function_exists(...)) bị lỗi,
+ * - cho phép do_shortcode('[amp_event_bar]') luôn chạy.
  */
 ?>
 <!doctype html>
@@ -15,7 +19,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="<?php bloginfo('name'); ?>">
     <link rel="apple-touch-icon" href="<?php echo esc_url(get_template_directory_uri() . '/assets/icons/apple-touch-icon.png'); ?>">
-    <!-- [XÓA] Dòng Canonical thủ công đã bị xóa -->
     <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
     <script async src="https://cdn.ampproject.org/v0.js"></script>
     <script async custom-element="amp-form" src="https://cdn.ampproject.org/v0/amp-form-0.1.js"></script>
@@ -72,9 +75,8 @@
         </div>
     </header>
     <?php 
-    // [THÊM MỚI] Hiển thị thanh thông báo sự kiện
-    if (function_exists('tuancele_amp_event_bar_shortcode')) {
-        echo do_shortcode('[amp_event_bar]');
-    }
+    // [SỬA LỖI] Xóa bỏ câu lệnh `if (function_exists(...))`
+    // vì nó kiểm tra sai tên hàm và ngăn shortcode chạy.
+    echo do_shortcode('[amp_event_bar]');
     ?>
     <div class="site-content-wrapper"><main class="container">

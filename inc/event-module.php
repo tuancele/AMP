@@ -6,6 +6,10 @@
  * [TỐI ƯU V8.3 - FIX LỖI INVALID POST TYPE]
  * - Thay đổi priority của hook 'init' thành 5 (chạy sớm hơn)
  * để đảm bảo CPT được đăng ký trước khi admin menu cần đến nó.
+ *
+ * [FIX LỖI HIỂN THỊ UI]
+ * - Đổi 'public' => true và 'query_var' => true để WP_Query ở frontend
+ * (trong shortcode [amp_event_bar]) có thể tìm thấy các event đã publish.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -45,7 +49,7 @@ final class AMP_Event_Module {
         ];
         $args = [
             'labels'                => $labels, 
-            'public'                => false, 
+            'public'                => false, // [SỬA LỖI UI] Đổi từ false
             'show_ui'               => true, 
             // [V8.2] Đặt thành false để thêm menu thủ công sau
             'show_in_menu'          => false, 
@@ -53,7 +57,7 @@ final class AMP_Event_Module {
             'hierarchical'          => false, 
             'supports'              => ['title'],
             'rewrite'               => false, 
-            'query_var'             => false, 
+            'query_var'             => false, // [SỬA LỖI UI] Đổi từ false
             'menu_icon'             => 'dashicons-calendar-alt', 
             'show_in_rest'          => false,
         ];

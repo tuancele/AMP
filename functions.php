@@ -51,6 +51,10 @@ require_once $theme_dir . '/inc/shortcodes-module.php'; // (Từ Bước 2)
 
 // [THAY ĐỔI BẮT ĐẦU - BƯỚC 6]
 require_once $theme_dir . '/inc/event-module.php';         // (Mới)
+// [SỬA LỖI] Khởi chạy Module Sự kiện ngay lập tức
+// để CPT 'event' được đăng ký ở 'init' priority 5
+// trước khi 'admin_menu' được gọi.
+new AMP_Event_Module();
 // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 
 // Tải các tệp logic "loose" còn lại (ĐÃ TÁI CẤU TRÚC)
@@ -244,7 +248,7 @@ function tuancele_init_functional_modules() {
 
     // [THAY ĐỔI MỚI - BƯỚC 6]
     // Khởi chạy Module Sự kiện (Event)
-    new AMP_Event_Module();
+    // (ĐÃ DI CHUYỂN LÊN TRÊN GLOBAL SCOPE ĐỂ SỬA LỖI)
     // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 
     // [THÊM MỚI] Khởi chạy Module Cài đặt Admin (Từ file cũ)
