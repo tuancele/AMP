@@ -2,13 +2,17 @@
 /**
  * inc/shortcodes-module.php
  * Module Class cho việc đăng ký và xử lý TẤT CẢ các shortcode của theme.
- * [TỐI ƯU HOWTO v4]: Sửa lỗi Regex triệt để.
+ * [TỐI ƯU HOWTO V19]: Sửa lỗi shortcode [howto] và [step] bằng logic cha-con
+ * và get_shortcode_atts_text() để bypass lỗi parse.
  * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class AMP_Shortcodes_Module {
+
+    // Biến tạm để lưu các steps khi shortcode [howto] chạy
+    private $howto_steps = [];
 
     /**
      * Khởi tạo module, đăng ký tất cả các hook và shortcode.
@@ -17,7 +21,15 @@ final class AMP_Shortcodes_Module {
         // Đăng ký tất cả các shortcode
         add_shortcode('form_dang_ky', [ $this, 'form_dang_ky' ]);
         add_shortcode('schema_faq', [ $this, 'schema_faq' ]);
-        add_shortcode('schema_howto', [ $this, 'schema_howto' ]);
+
+        // --- BỘ FIX HOWTO (V19) ---
+        add_shortcode('schema_howto', [ $this, 'schema_howto' ]); // Hàm cha
+        add_shortcode('step', [ $this, 'schema_howto_step' ]); // Hàm con
+        
+        // [FIX V19] Ngăn WordPress (wptexturize) làm hỏng dấu nháy của shortcode [step]
+        add_filter( 'no_texturize_shortcodes', [ $this, 'prevent_texturize_in_howto' ] );
+        // --- KẾT THÚC BỘ FIX HOWTO ---
+
         add_shortcode('amp_slider', [ $this, 'amp_slider' ]);
         add_shortcode('chi_tiet_bds', [ $this, 'chi_tiet_bds' ]);
         add_shortcode('tinh_lai_suat', [ $this, 'tinh_lai_suat' ]);
@@ -34,6 +46,13 @@ final class AMP_Shortcodes_Module {
         
         // Hook tự động chèn quảng cáo nội bộ
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
+    }
+
+    // [FIX V19] Hàm helper để thêm shortcode vào danh sách "không texturize"
+    public function prevent_texturize_in_howto( $shortcodes ) {
+        $shortcodes[] = 'schema_howto'; // Bỏ qua toàn bộ nội dung bên trong [schema_howto]
+        $shortcodes[] = 'step'; // Bỏ qua cả [step] cho chắc chắn
+        return $shortcodes;
     }
 
     // =========================================================================
@@ -77,8 +96,8 @@ final class AMP_Shortcodes_Module {
     }
 
     /**
-     * SHORTCODE [schema_howto]
-     * [ĐÃ TỐI ƯU V4]
+     * SHORTCODE [schema_howto] (Wrapper)
+     * [FIX V19] - Logic Cha-Con
      */
     public function schema_howto( $atts, $content = null ) {
         $args = shortcode_atts( [ 'title' => '', 'total_time' => '', ], $atts, 'schema_howto' );
@@ -86,36 +105,83 @@ final class AMP_Shortcodes_Module {
             return '<div class="shortcode-error">[LỖI: Shortcode HowTo thiếu thuộc tính "title"]</div>';
         }
 
-        // [SỬA LỖI REGEX v4]
-        // Regex này sẽ tìm [step ...] ... [/step]
-        // (?:<p>|<br \/>|\s)* -> Phớt lờ bất kỳ thẻ <p>, <br> hoặc khoảng trắng nào
-        //                         nằm giữa các shortcode.
-        $regex = '/\[step\s+title=(["\'])(.*?)\1\](.*?)\[\/step\]/is';
+        // 1. Reset mảng steps
+        $this->howto_steps = []; 
         
-        preg_match_all( $regex, $content, $matches );
-        
-        if ( empty( $matches[1] ) ) {
-            return '<div class="shortcode-error">[LỖI: Shortcode HowTo sai cú pháp hoặc không tìm thấy thẻ [step] bên trong]</div>';
-        }
-        
-        $steps_schema = [];
-        $visible_html = '<div class="howto-container"><h2 class="howto-title">' . esc_html( $args['title'] ) . '</h2><ol class="howto-steps">';
-        for ( $i = 0; $i < count( $matches[1] ); $i++ ) {
-            $step_title = trim( $matches[1][$i] );
-            $step_text_raw = trim( $matches[2][$i] );
-            
-            // Dọn dẹp <p> <br> *bên trong* nội dung của [step]
-            $step_text_clean = str_replace( ['<p>', '</p>', '<br />', '<br>'], ['', '', "\n", "\n"], $step_text_raw );
+        // 2. [FIX V19] Chạy do_shortcode() trực tiếp
+        // (Filter 'no_texturize_shortcodes' đã đảm bảo $content dùng dấu nháy thẳng)
+        $list_items_html = do_shortcode( $content );
 
-            $steps_schema[] = [ '@type' => 'HowToStep', 'name'  => wp_strip_all_tags($step_title), 'text'  => wp_strip_all_tags($step_text_clean) ];
-            $visible_html .= '<li><strong class="howto-step-title">' . esc_html($step_title) . '</strong><div>' . wpautop($step_text_clean) . '</div></li>';
+        // 3. Kiểm tra xem có step nào được xử lý không
+        if ( empty( $this->howto_steps ) ) {
+            return '<div class="shortcode-error">[LỖI: Shortcode HowTo không tìm thấy thẻ [step] nào. Vui lòng kiểm tra cú pháp.] (V19)</div>';
         }
-        $visible_html .= '</ol></div>';
+
+        // 4. Bọc HTML
+        $visible_html = '<div class="howto-container">';
+        $visible_html .= '<h2 class="howto-title">' . esc_html( $args['title'] ) . '</h2>';
+        $visible_html .= '<ol class="howto-steps">' . $list_items_html . '</ol>';
+        $visible_html .= '</div>';
         
-        $schema = [ '@context' => 'https://schema.org', '@type' => 'HowTo', 'name' => $args['title'], 'step' => $steps_schema ];
+        // 5. Tạo Schema từ mảng đã được populate
+        $schema = [ 
+            '@context' => 'https://schema.org', 
+            '@type' => 'HowTo', 
+            'name' => $args['title'], 
+            'step' => $this->howto_steps // Dùng mảng đã được populate
+        ];
         if( ! empty( $args['total_time'] ) ) { $schema['totalTime'] = $args['total_time']; }
         $schema_output = '<script type="application/ld+json">' . json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>';
+        
+        // 6. Trả về
         return $visible_html . $schema_output;
+    }
+
+    /**
+     * SHORTCODE [step] (con của [schema_howto])
+     * [FIX V19] - Hàm con, tự phân tích (parse) attribute bằng Regex
+     * để bypass lỗi của shortcode_parse_atts() trên Page (lỗi dấu :)
+     */
+    public function schema_howto_step( $atts, $content = null ) {
+        
+        // [FIX V19]
+        // Chúng ta không dùng $atts (mảng) nữa vì nó đã bị parse lỗi.
+        // Chúng ta sẽ lấy toàn bộ shortcode_text (đầu vào của hàm)
+        // bằng cách gọi hàm get_shortcode_atts_text() (undocumented).
+        //
+        // $shortcode_text sẽ là: '[step title="Bước 1: Tư vấn"]'
+        
+        $shortcode_text = '';
+        // Phải kiểm tra sự tồn tại của hàm "ẩn" này cho an toàn
+        if ( function_exists('get_shortcode_atts_text') ) {
+             $shortcode_text = get_shortcode_atts_text();
+        }
+
+        // Tự chạy Regex để lấy title từ chuỗi text đó
+        // Regex này chỉ cần tìm dấu nháy thẳng (") hoặc (')
+        // vì 'no_texturize_shortcodes' đã ngăn dấu nháy cong.
+        $step_title = 'Không có tiêu đề';
+        if ( ! empty( $shortcode_text ) && preg_match( '/title=(["\'])(.*?)\1/', $shortcode_text, $matches ) ) {
+            // $matches[2] sẽ là "Bước 1: Tư vấn" (chính xác)
+            $step_title = $matches[2];
+        } else if ( ! empty( $atts['title'] ) ) {
+            // Fallback (dự phòng) nếu get_shortcode_atts_text() không hoạt động
+            // và $atts (mảng) tình cờ parse đúng
+            $step_title = $atts['title'];
+        }
+        
+        // 2. Dọn dẹp nội dung
+        $step_text_clean = str_replace( ['<p>', '</p>', '<br />', '<br>'], ['', '', "\n", "\n"], $content );
+
+        // 3. Thêm dữ liệu vào mảng schema
+        $this->howto_steps[] = [ 
+            '@type' => 'HowToStep', 
+            'name'  => wp_strip_all_tags($step_title), 
+            'text'  => wp_strip_all_tags($step_text_clean) 
+        ];
+        
+        // 4. Trả về HTML cho một mục <li>
+        return '<li><strong class="howto-step-title">' . esc_html($step_title) . '</strong><div>' . wpautop($step_text_clean) . '</div></li>';
     }
 
     /**
