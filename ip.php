@@ -3,28 +3,26 @@
  * Template Name: Trang Log IP
  * Description: Bảng điều khiển so sánh truy cập giữa hôm nay và hôm qua.
  *
- * PHIÊN BẢN COMPARISON DASHBOARD v3.0:
- * - Phân tích và hiển thị báo cáo cho cả ngày hôm nay và ngày hôm qua.
- * - Đọc dữ liệu từ các file log được đặt tên theo ngày.
+ * PHIÊN BẢN 3.1 (TỐI ƯU API):
+ * - Đọc định dạng log 7 trường mới (Time|IP|Location|ISP|Org|CountryCode|URI).
+ * - Loại bỏ hoàn toàn việc gọi API (get_ip_info_from_api) khi tải trang.
+ * - Trang này giờ đây chỉ "đọc" dữ liệu đã được thu thập sẵn.
  */
-// [THÊM MỚI] BẢO VỆ: CHỈ CHO PHÉP ADMIN XEM
-if ( ! current_user_can( 'manage_options' ) ) {
-    // Nếu không phải admin, chuyển hướng về trang chủ
-    wp_redirect( home_url( '/' ) );
-    exit;
-}
+
 get_header();
 
-// --- BẮT ĐẦU KHỐI LOGIC PHÂN TÍCH ---
+// --- BẮT ĐẦU KHỐI LOGIC PHÂN TÍCH (ĐÃ NÂNG CẤP) ---
 
-// Hàm helper để phân tích một file log và trả về mảng thống kê
+/**
+ * Hàm helper để phân tích một file log (định dạng 7 trường) và trả về mảng thống kê.
+ */
 function analyze_log_file($file_path) {
     $stats = [
         'total_views'      => 0,
         'unique_ips_count' => 0,
-        'ips'              => [],
+        'ips'              => [], // Mảng này sẽ chứa dữ liệu chi tiết
         'urls'             => [],
-        'log_data'         => [], // Dành cho log hôm nay
+        'log_data'         => [], // Dành cho log hôm nay (200 dòng cuối)
     ];
 
     if (!file_exists($file_path)) {
@@ -36,29 +34,54 @@ function analyze_log_file($file_path) {
     if (is_array($raw_lines) && !empty($raw_lines)) {
         $stats['total_views'] = count($raw_lines);
         
-        // Lấy các dòng cuối để hiển thị (chỉ cần cho log hôm nay)
+        // Lấy 200 dòng cuối để hiển thị (giữ nguyên logic cũ)
         $reversed_lines = array_reverse($raw_lines);
         $stats['log_data'] = array_slice($reversed_lines, 0, 200);
 
+        // Lặp qua TẤT CẢ các dòng để lấy thống kê
         foreach ($raw_lines as $line) {
-            $parts = explode('|', $line, 4);
-            if (count($parts) < 4) continue;
+            // [NÂNG CẤP] Phân tách thành 7 phần
+            $parts = explode('|', $line, 7);
             
-            $ip = $parts[1];
-            $url = $parts[3];
+            // Nếu là log cũ (ít hơn 7 phần), bỏ qua để tránh lỗi
+            if (count($parts) < 7) continue; 
 
-            $stats['ips'][$ip] = ($stats['ips'][$ip] ?? 0) + 1;
+            // [NÂNG CẤP] Lấy dữ liệu đã được thu thập sẵn
+            list($time, $ip, $location, $isp, $org, $countryCode, $url) = $parts;
+
+            // Thống kê URL
             $stats['urls'][$url] = ($stats['urls'][$url] ?? 0) + 1;
+
+            // [NÂNG CẤP] Thống kê IP và lưu trữ thông tin chi tiết
+            if (!isset($stats['ips'][$ip])) {
+                $stats['ips'][$ip] = [
+                    'count'       => 0,
+                    'location'    => $location,
+                    'isp'         => $isp,
+                    'org'         => $org,
+                    'countryCode' => $countryCode,
+                ];
+            }
+            $stats['ips'][$ip]['count']++;
         }
         
         $stats['unique_ips_count'] = count($stats['ips']);
-        arsort($stats['ips']);
+        
+        // Sắp xếp IP theo số lượng (count) giảm dần
+        uasort($stats['ips'], function($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+        
+        // Sắp xếp URL theo số lượng giảm dần
         arsort($stats['urls']);
     }
     return $stats;
 }
 
-// Hàm helper để render một card thống kê
+/**
+ * Hàm helper để render một card thống kê (ĐÃ NÂNG CẤP)
+ * Sẽ không gọi API tra cứu IP nữa.
+ */
 function render_stats_card($stats_data) {
     ?>
     <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px;">
@@ -71,19 +94,26 @@ function render_stats_card($stats_data) {
             <p style="font-size: 2.5rem; font-weight: bold; margin: 0; color: #17a2b8;"><?php echo number_format_i18n($stats_data['unique_ips_count']); ?></p>
         </div>
         <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); grid-column: 1 / -1;">
-             <h4 style="margin-top: 0;">Top 10 IP truy cập nhiều nhất</h4>
+             <h4 style="margin-top: 0;">Top 10 IP truy cập nhiều nhất (Đã thu thập)</h4>
              <div class="ip-details-list" style="font-size: 14px; line-height: 1.6;">
                 <?php 
-                $top_ips = array_slice($stats_data['ips'], 0, 10);
+                $top_ips = array_slice($stats_data['ips'], 0, 10, true); // Giữ nguyên key (IP)
                 if (empty($top_ips)) { echo "<p>Chưa có dữ liệu.</p>"; } 
                 else {
-                    foreach($top_ips as $ip => $count) {
-                        $ip_info = function_exists('get_ip_info_from_api') ? get_ip_info_from_api($ip) : [];
-                        $country_flag = !empty($ip_info['countryCode']) ? '<img src="https://flagcdn.com/16x12/' . strtolower(esc_attr($ip_info['countryCode'])) . '.png" alt="' . esc_attr($ip_info['country']) . '" style="margin-right: 8px; vertical-align: middle;">' : '';
-                        $isp_info = !empty($ip_info['org']) ? esc_html($ip_info['org']) : 'N/A';
+                    foreach($top_ips as $ip => $data) {
+                        // [TỐI ƯU] Lấy dữ liệu trực tiếp từ mảng, không gọi API
+                        $country_flag = !empty($data['countryCode']) && $data['countryCode'] !== 'N/A'
+                            ? '<img src="https://flagcdn.com/16x12/' . strtolower(esc_attr($data['countryCode'])) . '.png" alt="' . esc_attr($data['location']) . '" style="margin-right: 8px; vertical-align: middle;">' 
+                            : '';
+                        
+                        // Ưu tiên hiển thị Org (ASxxx), nếu không có thì dùng ISP
+                        $isp_info = !empty($data['org']) && $data['org'] !== 'N/A' 
+                            ? esc_html($data['org']) 
+                            : esc_html($data['isp']);
+                        
                         echo '<div class="ip-item" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">' .
                              '  <div style="font-weight: bold;">' . esc_html($ip) . '</div>' .
-                             '  <div style="color: #555; text-align: right;">' . $country_flag . $isp_info . ' <strong style="color: #dc3545; margin-left:10px;">' . number_format_i18n($count) . '</strong></div>' .
+                             '  <div style="color: #555; text-align: right;">' . $country_flag . $isp_info . ' <strong style="color: #dc3545; margin-left:10px;">' . number_format_i18n($data['count']) . '</strong></div>' .
                              '</div>';
                     }
                 } ?>
@@ -132,18 +162,34 @@ $stats_yesterday = analyze_log_file($yesterday_log_file);
             <table class="visitor-log-table">
                 <thead>
                     <tr>
-                        <th>STT</th><th>Địa chỉ IP</th><th>Vị trí (Ước tính)</th><th>Url Truy Cập</th><th>Thời Gian</th>
+                        <th>STT</th>
+                        <th>Thời Gian</th>
+                        <th>Địa chỉ IP</th>
+                        <th>Vị trí</th>
+                        <th>ISP / Tổ chức</th>
+                        <th>QG</th>
+                        <th>Url Truy Cập</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($stats_today['log_data'] as $index => $line) : ?>
-                        <?php $parts = explode('|', $line, 4); if (count($parts) < 4) continue; ?>
+                        <?php 
+                        // [NÂNG CẤP] Phân tách 7 trường
+                        $parts = explode('|', $line, 7);
+                        // Xử lý an toàn nếu gặp phải log cũ (ít hơn 7 trường)
+                        if (count($parts) < 7) {
+                            $parts = array_pad($parts, 7, 'N/A'); // Đệm 'N/A' vào các trường thiếu
+                        }
+                        list($time, $ip, $location, $isp, $org, $countryCode, $uri) = $parts;
+                        ?>
                         <tr>
                             <td data-label="STT"><?php echo $index + 1; ?></td>
-                            <td data-label="Địa chỉ IP"><?php echo esc_html($parts[1]); ?></td>
-                            <td data-label="Vị trí (Ước tính)"><?php echo esc_html($parts[2]) ?: 'Không xác định'; ?></td>
-                            <td data-label="Url Truy Cập"><?php echo esc_html($parts[3]); ?></td>
-                            <td data-label="Thời Gian"><?php echo date('Y-m-d H:i:s', (int)$parts[0]); ?></td>
+                            <td data-label="Thời Gian"><?php echo date('H:i:s', (int)$time); ?></td>
+                            <td data-label="Địa chỉ IP"><?php echo esc_html($ip); ?></td>
+                            <td data-label="Vị trí"><?php echo esc_html($location); ?></td>
+                            <td data-label="ISP / Tổ chức"><?php echo esc_html($org !== 'N/A' ? $org : $isp); ?></td>
+                            <td data-label="QG"><?php echo esc_html($countryCode); ?></td>
+                            <td data-label="Url Truy Cập"><?php echo esc_html($uri); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
