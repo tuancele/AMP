@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
  * single.php - Phiên bản tối ưu UX với progress bar tích hợp trong TOC.

@@ -47,7 +47,7 @@ final class Tuancele_R2_WebP {
                     imagesavealpha($image, true);
                 }
                 
-                if (imagewebp($image, $destination_path, 90)) {
+                if (imagewebp($image, $destination_path, 80)) {
                     imagedestroy($image);
                     return $destination_path;
                 }

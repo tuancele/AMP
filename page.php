@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
  * page.php - Đã tắt hiển thị ảnh đại diện

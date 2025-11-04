@@ -47,8 +47,13 @@ require_once $theme_dir . '/inc/shortcodes-module.php'; // (Từ Bước 2)
 require_once $theme_dir . '/inc/event-module.php';         // (Mới)
 // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 
-// Tải các tệp logic "loose" còn lại
-require_once $theme_dir . '/inc/template-helpers.php';
+// Tải các tệp logic "loose" còn lại (ĐÃ TÁI CẤU TRÚC)
+$helpers_dir = $theme_dir . '/inc/helpers/';
+require_once $helpers_dir . 'logging.php';
+require_once $helpers_dir . 'template-tags.php';
+require_once $helpers_dir . 'content-filters.php';
+require_once $helpers_dir . 'query-filters.php';
+require_once $helpers_dir . 'utilities.php';
 require_once $theme_dir . '/inc/meta-boxes.php';
 require_once $theme_dir . '/inc/image-map-data.php';
 
@@ -87,17 +92,24 @@ add_action('after_switch_theme', 'tuancele_theme_activation_defaults');
  */
 function tuancele_theme_activation_flush_rewrites() {
     // Tải các CPT để đăng ký
-    tuancele_register_service_cpt(); // Hàm này vẫn ở global (functions.php)
+    tuancele_register_service_cpt();
     
-    // [THAY ĐỔI BẮT ĐẦU - BƯỚC 6]
     // Tải và gọi hàm đăng ký CPT từ Module Event
     require_once get_template_directory() . '/inc/event-module.php';
     (new AMP_Event_Module())->register_event_cpt();
-    // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 
-    // (Chúng ta sẽ xử lý image-map ở bước tiếp theo)
+    // Tải và gọi hàm đăng ký CPT Image Map
     require_once get_template_directory() . '/inc/image-map-data.php';
-    tuancele_register_image_map_cpt(); //
+    tuancele_register_image_map_cpt();
+
+    // [THÊM MỚI] Kiểm tra và đăng ký CPT Bất động sản
+    $integration_options = get_option('tuancele_integrations_settings', []);
+    $is_property_enabled = isset($integration_options['enable_property_cpt']) && $integration_options['enable_property_cpt'] === 'on';
+
+    if ($is_property_enabled) {
+        // Gọi hàm đăng ký CPT BĐS (hàm này nằm ngay bên dưới)
+        tuancele_register_property_cpt();
+    }
     
     // Flush rules
     flush_rewrite_rules();
@@ -144,6 +156,54 @@ function tuancele_register_service_cpt() {
     register_post_type('service', $args);
 }
 add_action('init', 'tuancele_register_service_cpt', 0);
+
+/**
+ * Đăng ký Custom Post Type cho Bất động sản (Property)
+ *
+ */
+// [THÊM MỚI] Lấy cài đặt Tích hợp
+$integration_options = get_option('tuancele_integrations_settings', []);
+$is_property_enabled = isset($integration_options['enable_property_cpt']) && $integration_options['enable_property_cpt'] === 'on';
+
+// [THÊM MỚI] Chỉ chạy code BĐS nếu được kích hoạt
+if ($is_property_enabled) {
+
+function tuancele_register_property_cpt() {
+    $labels = [
+        'name'                  => _x('Bất động sản', 'Post Type General Name', 'tuancele-amp'),
+        'singular_name'         => _x('Bất động sản', 'Post Type Singular Name', 'tuancele-amp'),
+        'menu_name'             => __('Tin BĐS', 'tuancele-amp'),
+        'name_admin_bar'        => __('Tin BĐS', 'tuancele-amp'),
+        'add_new'               => __('Đăng tin mới', 'tuancele-amp'),
+        'add_new_item'          => __('Đăng tin BĐS mới', 'tuancele-amp'),
+        'edit_item'             => __('Chỉnh sửa tin', 'tuancele-amp'),
+        'all_items'             => __('Tất cả tin BĐS', 'tuancele-amp'),
+    ];
+    $args = [
+        'label'                 => __('Bất động sản', 'tuancele-amp'),
+        'description'           => __('Quản lý tin đăng Bất động sản', 'tuancele-amp'),
+        'labels'                => $labels,
+        'supports'              => ['title', 'editor', 'excerpt', 'thumbnail', 'comments'], // Thêm 'comments'
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => true, // Hiển thị ở menu chính
+        'menu_position'         => 5, // Đặt ngay dưới "Bài viết"
+        'menu_icon'             => 'dashicons-admin-home', // Icon ngôi nhà
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => true,
+        'exclude_from_search'   => false,
+        'publicly_queryable'    => true,
+        'capability_type'       => 'post',
+        'show_in_rest'          => true, 
+        'rewrite'               => ['slug' => 'bat-dong-san'],
+    ];
+    register_post_type('property', $args);
+}
+add_action('init', 'tuancele_register_property_cpt', 0);
+}
 
 /**
  * =========================================================================

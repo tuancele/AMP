@@ -7,7 +7,12 @@
  * - Phân tích và hiển thị báo cáo cho cả ngày hôm nay và ngày hôm qua.
  * - Đọc dữ liệu từ các file log được đặt tên theo ngày.
  */
-
+// [THÊM MỚI] BẢO VỆ: CHỈ CHO PHÉP ADMIN XEM
+if ( ! current_user_can( 'manage_options' ) ) {
+    // Nếu không phải admin, chuyển hướng về trang chủ
+    wp_redirect( home_url( '/' ) );
+    exit;
+}
 get_header();
 
 // --- BẮT ĐẦU KHỐI LOGIC PHÂN TÍCH ---

@@ -112,6 +112,7 @@ add_action('shutdown', 'amp_end_output_buffer');
  *
  */
 function amp_final_output_cleanup($buffer) {
+
     // --- BẮT ĐẦU: LOGIC XỬ LÝ CANONICAL ---
 
     // 1. Kiểm tra xem thẻ canonical đã tồn tại trong buffer hay chưa.

@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
  * header.php - Phiên bản tối ưu UX, đã loại bỏ thanh progress bar cũ.
@@ -65,7 +66,7 @@
     <header id="page-top">
         <div class="container header-container">
             <div class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a></div>
-            
+            <link rel="preload" href="<?php echo esc_url(get_template_directory_uri() . '/assets/fonts/poppins-v20-700.woff2'); ?>" as="font" type="font/woff2" crossorigin="anonymous">
             <nav class="main-menu"><?php wp_nav_menu(['theme_location' => 'primary', 'container' => false]); ?></nav>
             <button on="tap:my-sidebar.toggle" class="menu-button" aria-label="Open menu">☰</button>
         </div>

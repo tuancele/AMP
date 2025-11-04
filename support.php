@@ -8,13 +8,15 @@ get_header();
 
 // Lấy từ khóa tìm kiếm (nếu có)
 $search_query = isset($_GET['sq']) ? sanitize_text_field($_GET['sq']) : '';
+// [THÊM MỚI] Lấy số trang hiện tại
+$paged = ( get_query_var( 'paged' ) ) ? absint( get_query_var( 'paged' ) ) : 1;
 
 // Cấu hình WP_Query
 $args = [
     'post_type'      => 'post',
     'post_status'    => 'publish',
     'category_name'  => 'support', // Lấy bài từ category 'support'
-    'posts_per_page' => -1, // Hiển thị tất cả bài viết
+    'posts_per_page' => 6, // Hiển thị tất cả bài viết
     'orderby'        => 'title', // Sắp xếp theo tiêu đề
     'order'          => 'ASC',
 ];
@@ -77,6 +79,33 @@ $support_query = new WP_Query($args);
                     </div>
                 <?php endwhile; ?>
             </div>
+            <?php 
+            // [DÁN CODE PHÂN TRANG VÀO ĐÂY]
+            $big = 999999999;
+            $pagination_links_args = array(
+                'base'               => str_replace( $big, '%#%', esc_url( get_pagenum_link( $big ) ) ),
+                'format'             => '?paged=%#%',
+                'current'            => max( 1, $paged ),
+                'total'              => $support_query->max_num_pages,
+                'prev_text'          => '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20"><path d="M12.45 15.55l-5-5 5-5L11.05 4.1 6 9.1l5.05 5.05 1.4-1.4z" fill="currentColor"/></svg><span>Trang trước</span>',
+                'next_text'          => '<span>Trang sau</span><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20"><path d="M7.55 4.45l5 5-5 5L8.95 15.9 14 10.9 8.95 5.85 7.55 4.45z" fill="currentColor"/></svg>',
+                'screen_reader_text' => ' ',
+                'type'               => 'list',
+                'mid_size'           => 1,
+                'end_size'           => 1,
+            );
+            
+            // Thêm tham số 'sq' (tìm kiếm) vào link phân trang nếu có
+            if ( ! empty( $search_query ) ) {
+                $pagination_links_args['add_args'] = array( 'sq' => $search_query );
+            }
+
+            $pagination_links = paginate_links( $pagination_links_args );
+
+            if ( $pagination_links ) {
+                printf( '<nav class="pagination">%s</nav>', $pagination_links );
+            }
+        ?>
         <?php else : ?>
             <p class="no-results">Không tìm thấy bài viết hỗ trợ nào<?php echo $search_query ? ' cho từ khóa "' . esc_html($search_query) . '"' : ''; ?>.</p>
         <?php endif; ?>

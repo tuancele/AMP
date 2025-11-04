@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class AMP_Comments_Module {
 
     public function __construct() {
+        // Tải script reCaptcha khi hiển thị form bình luận
+        add_action('comment_form_before', [ $this, 'load_recaptcha_script_for_comments' ]);
         // Hook xử lý submit bình luận AMP
         add_action('wp_ajax_amp_submit_comment', [ $this, 'handle_amp_comment_submission' ]);
         add_action('wp_ajax_nopriv_amp_submit_comment', [ $this, 'handle_amp_comment_submission' ]);
@@ -21,6 +23,17 @@ final class AMP_Comments_Module {
      *
      * =========================================================================
      */
+    public function load_recaptcha_script_for_comments() {
+        static $script_added = false;
+        if ( $script_added || is_admin() ) {
+            return;
+        }
+        add_action( 'wp_head', function() {
+            echo '<script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>' . "\n";
+        }, 7 );
+        $script_added = true;
+    }
+    
     public function handle_amp_comment_submission() {
         if (!isset($_POST['_amp_comment_nonce_field']) || !wp_verify_nonce($_POST['_amp_comment_nonce_field'], 'amp_comment_nonce_action')) {
             wp_send_json_error(['message' => 'Xác thực không hợp lệ. Vui lòng tải lại trang và thử lại.'], 403);
@@ -41,9 +54,9 @@ final class AMP_Comments_Module {
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
         
         // [THAY ĐỔI] XÁC THỰC GOOGLE RECAPTCHA
-        if ( !empty($this->get_recaptcha_secret_key()) ) {
+        if (function_exists('tuancele_get_recaptcha_secret_key') && !empty(tuancele_get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'submit_comment')) { // Gửi kèm action 'submit_comment'
+            if (!tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'submit_comment')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }

@@ -19,3 +19,5 @@ debug.log
 # Bỏ qua các file nén
 *.zip
 *.rar
+/lay-toa-do.html
+/css/get-coordinates-tool.css

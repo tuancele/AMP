@@ -91,20 +91,54 @@ add_action('wp_footer', 'add_logging_debugger');
 // MISCELLANEOUS HELPERS
 // =========================================================================
 
+/**
+ * [FIXED] Hiển thị Breadcrumbs
+ * - Đã thêm logic để hỗ trợ Custom Post Type (property, service)
+ */
 function tuancele_amp_display_breadcrumbs() {
     if ( is_front_page() ) return;
+    
     echo '<nav aria-label="breadcrumb" class="breadcrumb-container"><ol class="breadcrumbs-list">';
     echo '<li><a href="' . esc_url( home_url( '/' ) ) . '">Trang Chủ</a></li>';
-    if ( is_singular( 'post' ) ) {
-        $categories = get_the_category();
-        if ( ! empty( $categories ) ) echo '<li><a href="' . esc_url( get_category_link( $categories[0]->term_id ) ) . '">' . esc_html( $categories[0]->name ) . '</a></li>';
+
+    if ( is_archive() ) {
+        // Trang lưu trữ (Category, Tag, Archive CPT...)
+        $archive_title = strip_tags(get_the_archive_title()); 
+        echo '<li class="current-item">' . esc_html($archive_title) . '</li>'; 
+    
+    } elseif ( is_singular() ) { // Áp dụng cho TẤT CẢ các loại trang đơn (post, page, property...)
+        
+        $post_type = get_post_type();
+
+        if ($post_type === 'post') {
+            // Logic cũ cho Bài viết (post)
+            $categories = get_the_category();
+            if ( ! empty( $categories ) ) {
+                echo '<li><a href="' . esc_url( get_category_link( $categories[0]->term_id ) ) . '">' . esc_html( $categories[0]->name ) . '</a></li>';
+            }
+        } elseif ($post_type === 'property') {
+            // [MỚI] Logic cho Bất động sản (property)
+            $archive_link = get_post_type_archive_link('property');
+            if ($archive_link) {
+                $cpt_obj = get_post_type_object('property');
+                $cpt_name = $cpt_obj ? $cpt_obj->labels->name : 'Bất động sản';
+                echo '<li><a href="' . esc_url( $archive_link ) . '">' . esc_html($cpt_name) . '</a></li>';
+            }
+        } elseif ($post_type === 'service') {
+            // [MỚI] Logic cho Dịch vụ (service)
+             $archive_link = get_post_type_archive_link('service');
+            if ($archive_link) {
+                $cpt_obj = get_post_type_object('service');
+                $cpt_name = $cpt_obj ? $cpt_obj->labels->name : 'Dịch vụ';
+                echo '<li><a href="' . esc_url( $archive_link ) . '">' . esc_html($cpt_name) . '</a></li>';
+            }
+        }
+        // Trang (page) sẽ tự động bỏ qua các mục cha và chỉ hiển thị tiêu đề ở cuối.
+
+        // Mục hiện tại (luôn là tiêu đề của trang/bài viết)
         echo '<li class="current-item">' . get_the_title() . '</li>';
-    } elseif ( is_page() ) { echo '<li class="current-item">' . get_the_title() . '</li>';
-    } elseif ( is_archive() ) { 
-    // Lấy tiêu đề và loại bỏ thẻ HTML ngay lập tức
-    $archive_title = strip_tags(get_the_archive_title()); 
-    echo '<li class="current-item">' . esc_html($archive_title) . '</li>'; 
-}
+    }
+    
     echo '</ol></nav>';
 }
 
@@ -349,3 +383,47 @@ function tuancele_log_visitor_data_async($log_data) {
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
 }
 add_action('tuancele_async_log_visitor', 'tuancele_log_visitor_data_async', 10, 1);
+
+/**
+ * [OPTIMIZED] Lấy reCaptcha Secret Key từ cài đặt
+ */
+function tuancele_get_recaptcha_secret_key() { 
+    $options = get_option('tuancele_recaptcha_settings', []);
+    return $options['recaptcha_v3_secret_key'] ?? '';
+}
+
+/**
+ * [OPTIMIZED] Xác minh Google reCaptcha v3
+ * Kiểm tra cả Score (ngưỡng 0.5) và Action.
+ */
+function tuancele_verify_recaptcha_token($token, $ip, $action) {
+    $secret_key = tuancele_get_recaptcha_secret_key();
+    if (empty($secret_key) || empty($token)) {
+        return false;
+    }
+
+    // Lấy ngưỡng điểm từ admin, nếu không có thì mặc định là 0.5
+    // (Bạn có thể thêm trường 'recaptcha_v3_score_threshold' vào file admin-settings-module.php sau)
+    $options = get_option('tuancele_recaptcha_settings', []);
+    $threshold = !empty($options['recaptcha_v3_score_threshold']) ? (float)$options['recaptcha_v3_score_threshold'] : 0.5;
+
+    $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+        'body' => ['secret' => $secret_key, 'response' => $token, 'remoteip' => $ip],
+    ]);
+
+    if (is_wp_error($response)) { 
+        error_log('reCAPTCHA WP_Error: ' . $response->get_error_message());
+        return false; 
+    }
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+
+    // KIỂM TRA ĐẦY ĐỦ: Success, Score, và Action
+    if ( $body && $body['success'] === true && $body['score'] >= $threshold && $body['action'] === $action ) {
+        return true;
+    }
+
+    // Ghi log lại nếu thất bại để gỡ lỗi
+    error_log('reCAPTCHA Verification Failed. Score: ' . ($body['score'] ?? 'N/A') . ' | Action: ' . ($body['action'] ?? 'N/A'));
+    return false;
+}

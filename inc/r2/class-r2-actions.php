@@ -52,7 +52,7 @@ final class Tuancele_R2_Actions {
             return $updated_metadata; // Trả về metadata đã cập nhật ngay cả khi client lỗi.
         }
         
-        $upload_dir = wp_get_upload_dir();
+        $upload_dir = wp_upload_dir();
         $success = true;
 
         foreach ($files_to_process as $file) {

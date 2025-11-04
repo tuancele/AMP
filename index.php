@@ -1,4 +1,5 @@
 <?php
+$post_counter = 0; // Thêm dòng này
 /**
  * index.php - Đã kích hoạt lại ảnh đại diện
  * SỬA LỖI: Thêm aria-label vào link ảnh để tăng khả năng tiếp cận.

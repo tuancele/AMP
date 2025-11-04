@@ -352,6 +352,9 @@ final class AMP_Admin_Settings_Module {
         add_settings_section('tuancele_integrations_zoho_section', 'Tích hợp Zoho CRM', null, 'tuancele-amp-integrations');
         add_settings_field('zoho_xnqsjsdp', 'Zoho Key (xnQsjsdp)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xnqsjsdp']);
         add_settings_field('zoho_xmiwtld', 'Zoho Key (xmIwtLD)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xmiwtld']);
+        // Thêm section mới cho Kích hoạt Module
+        add_settings_section('tuancele_integrations_modules_section', 'Kích hoạt Module', null, 'tuancele-amp-integrations');
+        add_settings_field('enable_property_cpt', 'Kích hoạt Module BĐS', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_modules_section', ['id' => 'enable_property_cpt', 'type' => 'checkbox']);
 
         register_setting('tuancele_amp_schema_group', 'tuancele_amp_schema_options', [ $this, 'sanitize_callback' ]);
         add_settings_section('tuancele_schema_main_section', 'Thông tin chung', null, 'tuancele-amp-schema');
@@ -424,10 +427,22 @@ final class AMP_Admin_Settings_Module {
      */
     
     // ... (Các hàm callback cho integrations, schema, smtp, r2 không đổi) ...
-    public function integrations_field_callback($args) {
+public function integrations_field_callback($args) {
         $options = get_option('tuancele_integrations_settings', []);
-        $id = $args['id']; $value = $options[$id] ?? '';
-        echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" />';
+        $id = $args['id'];
+        $value = $options[$id] ?? '';
+        $type = $args['type'] ?? 'text'; // Mặc định là 'text'
+
+        switch ($type) {
+            case 'checkbox':
+                echo '<label><input type="checkbox" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="on" ' . checked('on', $value, false) . '></label>';
+                break;
+            
+            case 'text':
+            default:
+                echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" />';
+                break;
+        }
     }
     public function schema_field_callback($args) {
         $options = get_option('tuancele_amp_schema_options', []);

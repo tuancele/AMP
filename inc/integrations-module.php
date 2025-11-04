@@ -132,7 +132,7 @@ final class AMP_Integrations_Module {
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'contact_form')) {
+            if (!function_exists('tuancele_verify_recaptcha_token') || !tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'contact_form')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }
@@ -181,7 +181,7 @@ final class AMP_Integrations_Module {
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'phone_submit')) {
+            if (!function_exists('tuancele_verify_recaptcha_token') || !tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'phone_submit')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }

@@ -2,14 +2,16 @@
 /**
  * inc/meta-boxes.php
  * Chứa logic để tạo các Meta Box tùy chỉnh cho theme.
- * ĐÃ NÂNG CẤP: Bổ sung trường "Bài viết chính" cho template Trang chủ BĐS mà không làm mất các tính năng cũ.
+ * PHIÊN BẢN CẬP NHẬT:
+ * - ĐÃ SỬA LỖI PARSE ERROR bằng cách dùng cú pháp Nowdoc (<<<'JS')
+ * cho chuỗi JavaScript để PHP không bị lỗi với ký tự $.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * =========================================================================
- * META BOX CHO GIAO DIỆN TRANG CHỦ BĐS
+ * META BOX CHO GIAO DIỆN TRANG CHỦ BĐS (template-homepage-bds.php)
  * =========================================================================
  */
 
@@ -37,7 +39,7 @@ function bds_homepage_meta_box_callback($post) {
     wp_nonce_field('bds_homepage_save_meta_data', 'bds_homepage_meta_nonce');
 
     // Lấy các giá trị đã lưu
-    $main_post_id   = get_post_meta($post->ID, '_silo_main_post_id', true); // [THÊM MỚI]
+    $main_post_id   = get_post_meta($post->ID, '_silo_main_post_id', true);
     $project_cat_id = get_post_meta($post->ID, '_bds_project_category', true);
     $news_cat_id    = get_post_meta($post->ID, '_bds_news_category', true);
     $banner_img_id  = get_post_meta($post->ID, '_bds_banner_image_id', true);
@@ -51,7 +53,6 @@ function bds_homepage_meta_box_callback($post) {
         .bds-meta-box-field .description { font-style: italic; color: #666; margin-top: 5px; }
     </style>
     
-    <?php // [THÊM MỚI] Trường nhập ID cho bài viết chính ?>
     <div class="bds-meta-box-field">
         <label for="silo_main_post_id">1. Bài viết chính (Main Post/Page ID):</label>
         <input type="text" id="silo_main_post_id" name="_silo_main_post_id" value="<?php echo esc_attr($main_post_id); ?>" placeholder="Nhập ID của Page hoặc Post..."/>
@@ -111,9 +112,8 @@ function bds_homepage_save_meta_data($post_id) {
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (get_post_type($post_id) !== 'page' || !current_user_can('edit_page', $post_id)) return;
 
-    // [THAY ĐỔI] Cập nhật danh sách các trường cần lưu
     $fields = [
-        '_silo_main_post_id', // Thêm trường mới
+        '_silo_main_post_id',
         '_bds_project_category',
         '_bds_news_category',
         '_bds_banner_image_id',
@@ -123,10 +123,6 @@ function bds_homepage_save_meta_data($post_id) {
     foreach ($fields as $field) {
         if (isset($_POST[$field])) {
             update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
-        } else {
-            // Chỉ xóa meta nếu trường đó không tồn tại trong POST request (ví dụ: checkbox không được chọn)
-            // Đối với các trường text/select, nếu rỗng thì sẽ lưu giá trị rỗng, không xóa.
-            // Điều này an toàn hơn.
         }
     }
 }
@@ -138,7 +134,7 @@ function bds_homepage_enqueue_meta_box_scripts($hook) {
     if ( ($hook == 'post-new.php' || $hook == 'post.php') && isset($post->post_type) && $post->post_type == 'page' ) {
         wp_enqueue_media();
         
-        $script = "
+        $script = <<<'JS'
         jQuery(document).ready(function($) {
             function toggleMetaBox() {
                 const template = $('#page_template').val();
@@ -175,7 +171,7 @@ function bds_homepage_enqueue_meta_box_scripts($hook) {
                 });
             });
         });
-        ";
+JS;
         wp_add_inline_script('jquery-core', $script);
     }
 }
@@ -351,5 +347,304 @@ function tuancele_save_category_custom_meta($term_id, $tt_id) {
         }
     }
 }
-?>
 
+
+/**
+ * =========================================================================
+ * (MỚI) META BOX CHO CPT BẤT ĐỘNG SẢN (PROPERTY)
+ * =========================================================================
+ */
+// [THÊM MỚI] Lấy cài đặt Tích hợp
+$integration_options_mb = get_option('tuancele_integrations_settings', []);
+$is_property_enabled_mb = isset($integration_options_mb['enable_property_cpt']) && $integration_options_mb['enable_property_cpt'] === 'on';
+
+// [THÊM MỚI] Chỉ chạy code BĐS nếu được kích hoạt
+if ($is_property_enabled_mb) {
+
+// 1. Đăng ký Meta Box
+add_action('add_meta_boxes', 'property_register_meta_box');
+function property_register_meta_box() {
+    add_meta_box(
+        'property_details_box',
+        'Chi tiết Bất động sản (Tự động hiển thị)',
+        'property_meta_box_callback',
+        'property', // Chỉ hiển thị cho CPT 'property'
+        'advanced',
+        'high'
+    );
+}
+
+// 2. Hàm render nội dung HTML cho Meta Box
+function property_meta_box_callback($post) {
+    wp_nonce_field('property_save_meta_data', 'property_meta_nonce');
+
+    // Lấy các giá trị đã lưu
+    $meta_values = get_post_meta($post->ID);
+
+    // Hàm helper để lấy giá trị an toàn
+    $get_val = function($key) use ($meta_values) {
+        return $meta_values[$key][0] ?? '';
+    };
+    ?>
+    <style>
+        .property-meta-box-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .property-meta-box-field { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+        .property-meta-box-field.full-width { grid-column: 1 / -1; }
+        .property-meta-box-field label { font-weight: bold; display: block; margin-bottom: 5px; }
+        .property-meta-box-field input, .property-meta-box-field select { width: 100%; }
+        .property-meta-box-field .description { font-style: italic; color: #666; font-size: 12px; margin-top: 5px; }
+        .section-title { font-size: 1.2em; color: #2271b1; border-bottom: 1px solid #c3c4c7; padding-bottom: 5px; margin: 15px 0 10px; grid-column: 1 / -1; }
+        .image-gallery-preview img { cursor: move; }
+    </style>
+    
+    <div class="property-meta-box-grid">
+
+        <h3 class="section-title">Thông tin Hiển thị Cơ bản</h3>
+        
+        <div class="property-meta-box-field property-image-gallery-uploader full-width">
+            <label>Ảnh Slider (Chọn nhiều ảnh)</label>
+            <input type="hidden" id="_property_slider_ids" name="_property_slider_ids" value="<?php echo esc_attr($get_val('_property_slider_ids')); ?>"/>
+            
+            <div class="image-gallery-preview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; background: #eee; padding: 10px; border-radius: 4px; min-height: 75px;">
+                <?php
+                // Tải ảnh xem trước (preview) nếu đã có
+                $slider_ids_val = $get_val('_property_slider_ids');
+                if (!empty($slider_ids_val)) {
+                    $slider_ids_array = explode(',', $slider_ids_val);
+                    foreach ($slider_ids_array as $image_id) {
+                        $img_url = wp_get_attachment_image_url(intval($image_id), 'thumbnail');
+                        if ($img_url) {
+                            echo '<img src="' . esc_url($img_url) . '" style="width: 75px; height: 75px; object-fit: cover; border-radius: 3px;" data-id="' . esc_attr($image_id) . '">';
+                        }
+                    }
+                }
+                ?>
+            </div>
+            
+            <p class="description" style="margin-top: 5px;">Kéo thả ảnh trong khung xem trước để sắp xếp lại thứ tự. Tỷ lệ kích thước 16:9 </p>
+
+            <button type="button" class="button button-primary upload-gallery-button" style="margin-top: 10px;">Chọn/Chỉnh sửa Thư viện ảnh</button>
+            <button type="button" class="button button-secondary remove-gallery-button" style="margin-top: 10px; <?php if (empty($slider_ids_val)) echo 'display: none;'; ?>">Xóa tất cả</button>
+        </div>
+        
+        <div class="property-meta-box-field">
+            <label for="_property_map_id">ID Image Map (Mặt bằng)</label>
+            <input type="text" id="_property_map_id" name="_property_map_id" value="<?php echo esc_attr($get_val('_property_map_id')); ?>" placeholder="Nhập ID từ mục 'Image Maps'"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_price_text">Giá hiển thị (Text)</label>
+            <input type="text" id="_property_price_text" name="_property_price_text" value="<?php echo esc_attr($get_val('_property_price_text')); ?>" placeholder="Ví dụ: 2.5 Tỷ (hoặc Thỏa thuận)"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_area">Diện tích (m²)</label>
+            <input type="number" step="0.1" id="_property_area" name="_property_area" value="<?php echo esc_attr($get_val('_property_area')); ?>" placeholder="Ví dụ: 60"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_bedrooms">Số phòng ngủ</label>
+            <input type="number" step="1" id="_property_bedrooms" name="_property_bedrooms" value="<?php echo esc_attr($get_val('_property_bedrooms')); ?>" placeholder="Ví dụ: 2"/>
+        </div>
+        
+        <div class="property-meta-box-field">
+            <label for="_property_bathrooms">Số phòng tắm</label>
+            <input type="number" step="1" id="_property_bathrooms" name="_property_bathrooms" value="<?php echo esc_attr($get_val('_property_bathrooms')); ?>" placeholder="Ví dụ: 2"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_direction">Hướng</label>
+            <input type="text" id="_property_direction" name="_property_direction" value="<?php echo esc_attr($get_val('_property_direction')); ?>" placeholder="Ví dụ: Đông Nam"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_legal">Pháp lý</label>
+            <input type="text" id="_property_legal" name="_property_legal" value="<?php echo esc_attr($get_val('_property_legal')); ?>" placeholder="Ví dụ: Sổ hồng"/>
+        </div>
+
+        <h3 class="section-title">Thông tin dành cho Schema (Quan trọng cho SEO)</h3>
+        
+        <div class="property-meta-box-field">
+            <label for="_property_price_value">Giá trị (Chỉ điền số)</label>
+            <input type="number" step="0.01" id="_property_price_value" name="_property_price_value" value="<?php echo esc_attr($get_val('_property_price_value')); ?>" placeholder="Ví dụ: 2.5"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_price_unit">Đơn vị giá</label>
+            <select id="_property_price_unit" name="_property_price_unit">
+                <option value="Tỷ" <?php selected($get_val('_property_price_unit'), 'Tỷ'); ?>>Tỷ VNĐ</option>
+                <option value="Triệu" <?php selected($get_val('_property_price_unit'), 'Triệu'); ?>>Triệu VNĐ</option>
+            </select>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_street_address">Địa chỉ (Số nhà, Tên đường)</label>
+            <input type="text" id="_property_street_address" name="_property_street_address" value="<?php echo esc_attr($get_val('_property_street_address')); ?>" placeholder="Ví dụ: 123 Nguyễn Lương Bằng"/>
+        </div>
+
+        <div class="property-meta-box-field">
+            <label for="_property_address_locality">Quận / Huyện</label>
+            <input type="text" id="_property_address_locality" name="_property_address_locality" value="<?php echo esc_attr($get_val('_property_address_locality')); ?>" placeholder="Ví dụ: Quận 9"/>
+        </div>
+
+        <div class="property-meta-box-field full-width">
+            <label for="_property_address_region">Tỉnh / Thành phố</label>
+            <input type="text" id="_property_address_region" name="_property_address_region" value="<?php echo esc_attr($get_val('_property_address_region')); ?>" placeholder="Ví dụ: TP. Hồ Chí Minh"/>
+        </div>
+
+    </div>
+    <?php
+}
+
+// 3. Hàm lưu dữ liệu từ Meta Box
+add_action('save_post_property', 'property_save_meta_data'); // Chỉ chạy khi save CPT 'property'
+function property_save_meta_data($post_id) {
+    if (!isset($_POST['property_meta_nonce']) || !wp_verify_nonce($_POST['property_meta_nonce'], 'property_save_meta_data')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (get_post_type($post_id) !== 'property' || !current_user_can('edit_post', $post_id)) return;
+
+    $fields = [
+        '_property_slider_ids',
+        '_property_map_id',
+        '_property_price_text',
+        '_property_area',
+        '_property_bedrooms',
+        '_property_bathrooms',
+        '_property_direction',
+        '_property_legal',
+        '_property_price_value',
+        '_property_price_unit',
+        '_property_street_address',
+        '_property_address_locality',
+        '_property_address_region',
+    ];
+
+    foreach ($fields as $field) {
+        if (isset($_POST[$field])) {
+            update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
+        } else {
+            delete_post_meta($post_id, $field);
+        }
+    }
+}
+
+/**
+ * Tải script và style cho Meta Box CPT 'property'
+ * (Phiên bản đã làm sạch ký tự + SỬA LỖI CÚ PHÁP)
+ */
+function property_admin_scripts($hook) {
+    global $post;
+    if ( ($hook == 'post-new.php' || $hook == 'post.php') && isset($post->post_type) && $post->post_type == 'property' ) {
+        
+        // 1. Tải thư viện media của WordPress
+        wp_enqueue_media();
+        
+        // 2. Tải thư viện jQuery UI Sortable (để kéo thả)
+        wp_enqueue_script('jquery-ui-sortable');
+
+        // 3. Thêm JavaScript nội tuyến (SỬ DỤNG NOWDOC)
+        $script = <<<'JS'
+        jQuery(document).ready(function($) {
+            'use strict';
+            
+            if (typeof wp === 'undefined' || !wp.media) {
+                console.error('wp.media không tồn tại.');
+                return;
+            }
+
+            // --- Các hàm Helper JS ---
+            function js_esc_attr(str) {
+                if (typeof str !== 'string') return '';
+                return str.replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            function js_esc_url(url) {
+                if (typeof url !== 'string') return '';
+                return url.replace(/'/g, '%27').replace(/"/g, '%22');
+            }
+            // -------------------------
+
+            // Xử lý trình tải lên thư viện
+            $('.property-image-gallery-uploader').each(function() {
+                const uploader = $(this);
+                const hiddenInput = uploader.find('input[type=hidden]');
+                const previewDiv = uploader.find('.image-gallery-preview');
+                const removeBtn = uploader.find('.remove-gallery-button');
+                let mediaFrame;
+
+                // Kích hoạt kéo thả
+                previewDiv.sortable({
+                    items: 'img',
+                    update: function(event, ui) { updateHiddenInput(); }
+                });
+
+                // Cập nhật giá trị vào input ẩn
+                function updateHiddenInput() {
+                    const ids = previewDiv.find('img').map(function() {
+                        return $(this).data('id');
+                    }).get();
+                    hiddenInput.val(ids.join(','));
+                }
+
+                // Mở thư viện Media
+                uploader.on('click', '.upload-gallery-button', function(e) {
+                    e.preventDefault();
+                    const currentIDs = hiddenInput.val().split(',').filter(Number).map(Number);
+                    if (mediaFrame) { mediaFrame.open(); return; }
+
+                    mediaFrame = wp.media({
+                        title: 'Chọn ảnh cho Slider',
+                        button: { text: 'Sử dụng các ảnh này' },
+                        multiple: 'add',
+                        library: { type: 'image' }
+                    });
+
+                    // Khi thư viện được mở, tự động chọn các ảnh đã có
+                    mediaFrame.on('open', function() {
+                        const selection = mediaFrame.state().get('selection');
+                        currentIDs.forEach(function(id) {
+                            const attachment = wp.media.attachment(id);
+                            attachment.fetch();
+                            selection.add(attachment ? [attachment] : []);
+                        });
+                    });
+
+                    // Khi người dùng chọn xong
+                    mediaFrame.on('select', function() {
+                        const selection = mediaFrame.state().get('selection');
+                        let previewHtml = '';
+                        let newIds = [];
+                        selection.map(function(attachment) {
+                            attachment = attachment.toJSON();
+                            if (attachment.id) {
+                                newIds.push(attachment.id);
+                                const thumbUrl = (attachment.sizes && attachment.sizes.thumbnail) ? attachment.sizes.thumbnail.url : attachment.url;
+                                // SỬA LỖI: Đảm bảo chuỗi JS được nối chính xác
+                                previewHtml += '<img src="' + js_esc_url(thumbUrl) + '" style="width: 75px; height: 75px; object-fit: cover; border-radius: 3px;" data-id="' + js_esc_attr(String(attachment.id)) + '">';
+                            }
+                        });
+                        hiddenInput.val(newIds.join(','));
+                        previewDiv.html(previewHtml);
+                        removeBtn.show();
+                    });
+                    mediaFrame.open();
+                });
+
+                // Xử lý nút Xóa tất cả
+                uploader.on('click', '.remove-gallery-button', function(e) {
+                    e.preventDefault();
+                    if (confirm('Bạn có chắc muốn xóa tất cả ảnh slider?')) {
+                        hiddenInput.val('');
+                        previewDiv.html('');
+                        removeBtn.hide();
+                    }
+                });
+            });
+        });
+JS;
+        // Dấu ; trên dòng 'JS;' phải nằm ở đầu dòng, không có bất kỳ khoảng trắng nào trước nó.
+        wp_add_inline_script('jquery-core', $script);
+    }
+}
+// Kích hoạt hàm script
+add_action('admin_enqueue_scripts', 'property_admin_scripts');
+}
