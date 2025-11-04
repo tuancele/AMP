@@ -1,13 +1,33 @@
 <?php
 /**
  * View: Hiển thị trang Hướng dẫn Shortcode.
- * (Tách ra từ admin-settings-module.php)
+ * (ĐÃ BỔ SUNG CSS/JS BỊ THIẾU TỪ FILE GỐC)
  */
 ?>
 <div class="wrap">
     <h1>Hướng dẫn sử dụng Shortcode của Theme</h1>
     <p>Sao chép và dán các shortcode dưới đây vào trình soạn thảo bài viết/trang để sử dụng. Click vào tiêu đề để xem chi tiết.</p>
 
+    <style>
+        .shortcode-guide-box { background: #fff; border: 1px solid #ccd0d4; padding: 15px 20px; margin-bottom: 20px; border-left-width: 4px; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+        .shortcode-guide-box h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #eee; font-size: 1.3em; cursor: pointer; }
+        .shortcode-guide-box h2::after { content: ' ▼'; font-size: 0.8em; }
+        .shortcode-guide-box .details { display: none; margin-top: 15px; }
+        .shortcode-guide-box code { background: #f0f0f1; padding: 10px; border-radius: 4px; font-size: 14px; display: block; margin: 10px 0; white-space: pre-wrap; word-break: break-all; overflow-x: auto; border: 1px solid #ddd; }
+        .shortcode-guide-box .description { margin-top: 10px; color: #555; font-style: italic; }
+        .shortcode-guide-box .note { color: #d63638; font-weight: bold; margin-top: 10px; }
+        .shortcode-guide-box ul { margin-top: 10px; list-style: disc; padding-left: 20px;}
+        .shortcode-guide-box table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .shortcode-guide-box th, .shortcode-guide-box td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .shortcode-guide-box th { background-color: #f9f9f9; }
+    </style>
+    <script>
+        jQuery(document).ready(function($){
+            $('.shortcode-guide-box h2').on('click', function(){
+                $(this).next('.details').slideToggle();
+            });
+        });
+    </script>
     <?php /* --- Toàn bộ nội dung HTML của hướng dẫn shortcode --- */ ?>
 
     <?php /* === MỤC FORM === */ ?>

@@ -85,10 +85,30 @@ class AMP_R2_Settings_Page extends AMP_Admin_Settings_Page_Base {
         );
     }
     
-    /**
-     * Hàm render riêng cho công cụ migration, gọi file view
+/**
+     * Hàm render riêng cho công cụ migration (ĐÃ GỘP HTML VÀO ĐỂ FIX LỖI PATH)
      */
     public function render_migration_tool() {
-        require_once get_template_directory() . '/inc/view-r2-migration-tool.php';
+        // Lấy dữ liệu
+        $status = get_option('tuancele_r2_migration_status', ['running' => false, 'total' => 0, 'processed' => 0]);
+        $is_running = $status['running'];
+
+        $local_query = new WP_Query([
+            'post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => -1, 'fields' => 'ids',
+            'meta_query' => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']]
+        ]);
+        $local_count = $local_query->post_count;
+        ?>
+        
+        <div id="r2-migration-tool">
+            <div id="r2-migration-status"></div>
+            <div id="r2-progress-bar-container"><div id="r2-progress-bar">0%</div></div>
+            <p style="margin-top:15px">
+                <button type="button" class="button button-primary" id="start-r2-migration" <?php if ($is_running || $local_count === 0) echo 'disabled'; ?>>Bắt đầu Di chuyển <?php echo $local_count; ?> tệp</button>
+                <button type="button" class="button" id="cancel-r2-migration" <?php if (!$is_running) echo 'disabled'; ?>>Hủy bỏ</button>
+                <button type="button" class="button" id="recheck-r2-migration" style="margin-left: 15px;" <?php if ($is_running) echo 'disabled'; ?>><?php echo $is_running ? 'Đang chạy...' : 'Kiểm tra lại'; ?></button>
+            </p>
+        </div>
+        <?php
     }
 }

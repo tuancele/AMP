@@ -37,7 +37,8 @@ require_once $theme_dir . '/inc/theme-setup.php'; // (Từ Bước 1)
 require_once $theme_dir . '/inc/amp-core.php'; // (Từ Bước 1)
 
 // Tải các Module Class
-require_once $theme_dir . '/inc/admin-settings-loader.php'; // (Lõi tải Cài đặt Admin mới)
+// require_once $theme_dir . '/inc/admin-settings-loader.php'; // (ĐÃ VÔ HIỆU HÓA TỆP MỚI)
+require_once $theme_dir . '/inc/admin-settings-module.php'; // (ĐÃ KÍCH HOẠT LẠI TỆP CŨ)
 require_once $theme_dir . '/inc/integrations-module.php'; // (Từ Bước 4)
 require_once $theme_dir . '/inc/comments-module.php';     // (Từ Bước 4)
 require_once $theme_dir . '/inc/seo-module.php';         // (Từ Bước 3)
@@ -60,6 +61,12 @@ require_once $theme_dir . '/inc/image-map-data.php';
 // Khởi chạy Module Cloudflare R2
 require_once $theme_dir . '/inc/r2/class-r2-integration.php';
 Tuancele_R2_Integration::get_instance();
+
+// (ĐÃ VÔ HIỆU HÓA LỆNH KHỞI CHẠY CỦA TỆP MỚI)
+// if ( is_admin() ) {
+//     new AMP_Admin_Settings_Loader();
+// }
+
 /**
  * =========================================================================
  * 3. LOGIC KHI KÍCH HOẠT THEME (ACTIVE TO RUN)
@@ -227,6 +234,11 @@ function tuancele_init_functional_modules() {
     // Khởi chạy Module Sự kiện (Event)
     new AMP_Event_Module();
     // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
+
+    // [THÊM MỚI] Khởi chạy Module Cài đặt Admin (Từ file cũ)
+    if ( is_admin() ) {
+        new AMP_Admin_Settings_Module();
+    }
 }
 add_action('init', 'tuancele_init_functional_modules');
 
@@ -273,3 +285,5 @@ function tuancele_create_visitor_log_table() {
 
 // Đăng ký hàm này để nó chạy mỗi khi theme được kích hoạt
 add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
+
+// [ĐÃ XÓA DÒNG '}' BỊ THỪA GÂY LỖI]
