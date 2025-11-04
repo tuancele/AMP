@@ -15,21 +15,42 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Hiển thị thanh điều hướng breadcrumbs.
+ * ĐÃ NÂNG CẤP: Hỗ trợ CPT 'property' (Bất động sản).
  */
 function tuancele_amp_display_breadcrumbs() {
     if ( is_front_page() ) return;
+
     echo '<nav aria-label="breadcrumb" class="breadcrumb-container"><ol class="breadcrumbs-list">';
     echo '<li><a href="' . esc_url( home_url( '/' ) ) . '">Trang Chủ</a></li>';
+
     if ( is_singular( 'post' ) ) {
+        // --- Logic cho Bài viết (Post) ---
         $categories = get_the_category();
-        if ( ! empty( $categories ) ) echo '<li><a href="' . esc_url( get_category_link( $categories[0]->term_id ) ) . '">' . esc_html( $categories[0]->name ) . '</a></li>';
+        if ( ! empty( $categories ) ) {
+            echo '<li><a href="' . esc_url( get_category_link( $categories[0]->term_id ) ) . '">' . esc_html( $categories[0]->name ) . '</a></li>';
+        }
         echo '<li class="current-item">' . get_the_title() . '</li>';
-    } elseif ( is_page() ) { echo '<li class="current-item">' . get_the_title() . '</li>';
+
+    } elseif ( is_singular( 'property' ) ) {
+        // --- [MỚI] Logic cho CPT Bất động sản (Property) ---
+        $post_type = get_post_type_object( 'property' );
+        if ( $post_type && $post_type->has_archive ) {
+            // Lấy tên CPT (Bất động sản) và link archive (/bat-dong-san/)
+            echo '<li><a href="' . esc_url( get_post_type_archive_link( 'property' ) ) . '">' . esc_html( $post_type->labels->name ) . '</a></li>';
+        }
+        echo '<li class="current-item">' . get_the_title() . '</li>';
+        
+    } elseif ( is_page() ) {
+        // --- Logic cho Trang (Page) ---
+        echo '<li class="current-item">' . get_the_title() . '</li>';
+
     } elseif ( is_archive() ) { 
-    // Lấy tiêu đề và loại bỏ thẻ HTML ngay lập tức
-    $archive_title = strip_tags(get_the_archive_title()); 
-    echo '<li class="current-item">' . esc_html($archive_title) . '</li>'; 
-}
+        // --- Logic cho Trang Lưu trữ (Archive) ---
+        // Logic này đã đúng, tự động lấy tên CPT hoặc Category
+        $archive_title = strip_tags( get_the_archive_title() ); 
+        echo '<li class="current-item">' . esc_html( $archive_title ) . '</li>'; 
+    }
+
     echo '</ol></nav>';
 }
 

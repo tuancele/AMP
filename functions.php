@@ -37,7 +37,7 @@ require_once $theme_dir . '/inc/theme-setup.php'; // (Từ Bước 1)
 require_once $theme_dir . '/inc/amp-core.php'; // (Từ Bước 1)
 
 // Tải các Module Class
-require_once $theme_dir . '/inc/admin-settings-module.php'; // (Từ Bước 5)
+require_once $theme_dir . '/inc/admin-settings-loader.php'; // (Lõi tải Cài đặt Admin mới)
 require_once $theme_dir . '/inc/integrations-module.php'; // (Từ Bước 4)
 require_once $theme_dir . '/inc/comments-module.php';     // (Từ Bước 4)
 require_once $theme_dir . '/inc/seo-module.php';         // (Từ Bước 3)
@@ -222,11 +222,6 @@ function tuancele_init_functional_modules() {
 
     // Khởi chạy Module Bình luận
     new AMP_Comments_Module();
-    
-    // Khởi chạy Module Cài đặt Admin
-    if ( is_admin() ) {
-        new AMP_Admin_Settings_Module();
-    }
 
     // [THAY ĐỔI MỚI - BƯỚC 6]
     // Khởi chạy Module Sự kiện (Event)
