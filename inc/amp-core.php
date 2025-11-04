@@ -187,7 +187,7 @@ function amp_final_output_cleanup($buffer) {
     // Remove <link rel="stylesheet"> tags
     $buffer = preg_replace('/<link[^>]*rel=[\'"]stylesheet[\'"][^>]*>/is', '', $buffer);
     // Remove disallowed <script> tags
-    $safe_script_pattern = '/<script(?![^>]*type=[\'"]application\/(ld\+json|json)[\'"])(?![^>]*src=[\'"][^\'"]*cdn\.ampproject\.org)[^>]*>.*?<\/script>/is';
+    $safe_script_pattern = '/<script(?![^>]*type=[\'"]application\/(ld\+json|json)[\'"])(?![^>]*src=[\'"][^\'"]*cdn\.ampproject\.org)(?![^>]*target=[\'"]amp-script[\'"])[^>]*>.*?<\/script>/is';
     if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $buffer, $matches)) {
         $body_content = $matches[1];
         $cleaned_body = preg_replace($safe_script_pattern, '', $body_content);

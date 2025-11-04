@@ -2,8 +2,15 @@
 /**
  * inc/shortcodes-module.php
  * Module Class cho việc đăng ký và xử lý TẤT CẢ các shortcode của theme.
- * [TỐI ƯU HOWTO V19]: Sửa lỗi shortcode [howto] và [step] bằng logic cha-con
- * và get_shortcode_atts_text() để bypass lỗi parse.
+ *
+ * [TỐI ƯU HOWTO V28] - Giải pháp cuối cùng.
+ * 1. Gỡ bỏ filter 'no_texturize_shortcodes' (trong __construct)
+ * để cho phép wptexturize chạy nhất quán trên cả Post và Page.
+ * 2. Thêm logic chuẩn hóa dấu nháy cong (str_replace) vào hàm cha [schema_howto]
+ * để sửa lỗi do wptexturize gây ra TRƯỚC KHI do_shortcode.
+ * 3. Khôi phục hàm con [step] về logic $atts đơn giản, vì $atts
+ * bây giờ sẽ luôn được parse chính xác.
+ *
  * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
  */
 
@@ -22,12 +29,12 @@ final class AMP_Shortcodes_Module {
         add_shortcode('form_dang_ky', [ $this, 'form_dang_ky' ]);
         add_shortcode('schema_faq', [ $this, 'schema_faq' ]);
 
-        // --- BỘ FIX HOWTO (V19) ---
+        // --- BỘ FIX HOWTO (V28) ---
         add_shortcode('schema_howto', [ $this, 'schema_howto' ]); // Hàm cha
         add_shortcode('step', [ $this, 'schema_howto_step' ]); // Hàm con
         
-        // [FIX V19] Ngăn WordPress (wptexturize) làm hỏng dấu nháy của shortcode [step]
-        add_filter( 'no_texturize_shortcodes', [ $this, 'prevent_texturize_in_howto' ] );
+        // [FIX V28] Gỡ bỏ filter gây ra sự không nhất quán giữa Post và Page
+        // add_filter( 'no_texturize_shortcodes', [ $this, 'prevent_texturize_in_howto' ] );
         // --- KẾT THÚC BỘ FIX HOWTO ---
 
         add_shortcode('amp_slider', [ $this, 'amp_slider' ]);
@@ -48,12 +55,8 @@ final class AMP_Shortcodes_Module {
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
     }
 
-    // [FIX V19] Hàm helper để thêm shortcode vào danh sách "không texturize"
-    public function prevent_texturize_in_howto( $shortcodes ) {
-        $shortcodes[] = 'schema_howto'; // Bỏ qua toàn bộ nội dung bên trong [schema_howto]
-        $shortcodes[] = 'step'; // Bỏ qua cả [step] cho chắc chắn
-        return $shortcodes;
-    }
+    // [FIX V28] Gỡ bỏ hàm này (không cần thiết)
+    // public function prevent_texturize_in_howto( $shortcodes ) { ... }
 
     // =========================================================================
     // CÁC HÀM CALLBACK CHO SHORTCODE
@@ -97,7 +100,7 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [schema_howto] (Wrapper)
-     * [FIX V19] - Logic Cha-Con
+     * [FIX V28] - Chuẩn hóa dấu nháy cong
      */
     public function schema_howto( $atts, $content = null ) {
         $args = shortcode_atts( [ 'title' => '', 'total_time' => '', ], $atts, 'schema_howto' );
@@ -108,22 +111,29 @@ final class AMP_Shortcodes_Module {
         // 1. Reset mảng steps
         $this->howto_steps = []; 
         
-        // 2. [FIX V19] Chạy do_shortcode() trực tiếp
-        // (Filter 'no_texturize_shortcodes' đã đảm bảo $content dùng dấu nháy thẳng)
+        // 2. [FIX V28] CHUẨN HÓA DẤU NGOẶC KÉP
+        // Đổi tất cả dấu ngoặc kép cong (do wptexturize gây ra)
+        // thành dấu ngoặc kép thẳng (") mà trình parser của WP có thể hiểu.
+        $curly_quotes = ['“', '”', '‘', '’'];
+        $straight_quotes = ['"', '"', "'", "'"];
+        $content = str_replace( $curly_quotes, $straight_quotes, $content );
+
+        // 3. Chạy do_shortcode() với $content đã được chuẩn hóa
+        // Vì $content đã sạch, WP sẽ parse [step title='...'] chính xác
         $list_items_html = do_shortcode( $content );
 
-        // 3. Kiểm tra xem có step nào được xử lý không
+        // 4. Kiểm tra xem có step nào được xử lý không
         if ( empty( $this->howto_steps ) ) {
-            return '<div class="shortcode-error">[LỖI: Shortcode HowTo không tìm thấy thẻ [step] nào. Vui lòng kiểm tra cú pháp.] (V19)</div>';
+            return '<div class="shortcode-error">[LỖI: Shortcode HowTo không tìm thấy thẻ [step] nào. Vui lòng kiểm tra cú pháp.] (V28)</div>';
         }
 
-        // 4. Bọc HTML
+        // 5. Bọc HTML
         $visible_html = '<div class="howto-container">';
         $visible_html .= '<h2 class="howto-title">' . esc_html( $args['title'] ) . '</h2>';
         $visible_html .= '<ol class="howto-steps">' . $list_items_html . '</ol>';
         $visible_html .= '</div>';
         
-        // 5. Tạo Schema từ mảng đã được populate
+        // 6. Tạo Schema từ mảng đã được populate
         $schema = [ 
             '@context' => 'https://schema.org', 
             '@type' => 'HowTo', 
@@ -133,40 +143,23 @@ final class AMP_Shortcodes_Module {
         if( ! empty( $args['total_time'] ) ) { $schema['totalTime'] = $args['total_time']; }
         $schema_output = '<script type="application/ld+json">' . json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>';
         
-        // 6. Trả về
+        // 7. Trả về
         return $visible_html . $schema_output;
     }
 
     /**
      * SHORTCODE [step] (con của [schema_howto])
-     * [FIX V19] - Hàm con, tự phân tích (parse) attribute bằng Regex
-     * để bypass lỗi của shortcode_parse_atts() trên Page (lỗi dấu :)
+     * [FIX V28] - Quay lại logic đơn giản, chỉ dùng $atts
      */
     public function schema_howto_step( $atts, $content = null ) {
         
-        // [FIX V19]
-        // Chúng ta không dùng $atts (mảng) nữa vì nó đã bị parse lỗi.
-        // Chúng ta sẽ lấy toàn bộ shortcode_text (đầu vào của hàm)
-        // bằng cách gọi hàm get_shortcode_atts_text() (undocumented).
-        //
-        // $shortcode_text sẽ là: '[step title="Bước 1: Tư vấn"]'
-        
-        $shortcode_text = '';
-        // Phải kiểm tra sự tồn tại của hàm "ẩn" này cho an toàn
-        if ( function_exists('get_shortcode_atts_text') ) {
-             $shortcode_text = get_shortcode_atts_text();
-        }
+        // [FIX V28] Quay lại logic đơn giản.
+        // Vì hàm cha (V28) đã dọn dẹp $content,
+        // $atts nhận được ở đây sẽ luôn chính xác.
+        // (ví dụ: $atts['title'] = 'Bước 1')
 
-        // Tự chạy Regex để lấy title từ chuỗi text đó
-        // Regex này chỉ cần tìm dấu nháy thẳng (") hoặc (')
-        // vì 'no_texturize_shortcodes' đã ngăn dấu nháy cong.
         $step_title = 'Không có tiêu đề';
-        if ( ! empty( $shortcode_text ) && preg_match( '/title=(["\'])(.*?)\1/', $shortcode_text, $matches ) ) {
-            // $matches[2] sẽ là "Bước 1: Tư vấn" (chính xác)
-            $step_title = $matches[2];
-        } else if ( ! empty( $atts['title'] ) ) {
-            // Fallback (dự phòng) nếu get_shortcode_atts_text() không hoạt động
-            // và $atts (mảng) tình cờ parse đúng
+        if ( ! empty( $atts['title'] ) ) {
             $step_title = $atts['title'];
         }
         
@@ -240,31 +233,71 @@ final class AMP_Shortcodes_Module {
         return ob_get_clean();
     }
 
-    /**
+/**
      * SHORTCODE [tinh_lai_suat]
-     * [ĐÃ SỬA LỖI] Sử dụng uniqid() để ngăn lỗi duplicate ID
+     * [FIX V31] - Cấu trúc AMP Script chuẩn.
+     * 1. <amp-script layout="container"> chứa HTML (Form, Result).
+     * 2. <script type="text/plain"> chứa JS, nằm BÊN NGOÀI <amp-script>.
+     * 3. Tất cả ID đều phải là duy nhất (dùng uniqid).
      */
     public function tinh_lai_suat() {
         // [SỬA LỖI] Tạo ID duy nhất cho mỗi lần gọi shortcode
-        $script_id = 'mortgageCalculatorScript_' . uniqid(); 
+        $script_id = 'calc_' . uniqid(); 
         ob_start(); ?>
+        
         <div class="mortgage-calculator">
             <h3 class="calculator-title">Ước tính khoản vay mua nhà</h3>
+            
+            <?php // --- BẮT ĐẦU CẤU TRÚC V31 --- ?>
+            
             <amp-script script="<?php echo esc_attr($script_id); ?>" layout="container">
+                
                 <form method="GET" action="#" target="_top">
-                    <div class="form-row"><label for="loanAmount">Số tiền vay (triệu VNĐ)</label><input type="number" id="loanAmount" placeholder="Ví dụ: 800" required></div>
-                    <div class="form-row"><label for="loanTerm">Thời hạn vay (năm)</label><input type="number" id="loanTerm" value="20" required></div>
-                    <div class="form-row"><label for="interestRate">Lãi suất (%/năm)</label><input type="number" step="0.1" id="interestRate" value="7.5" required></div>
+                    <div class="form-row"><label for="loanAmount-<?php echo esc_attr($script_id); ?>">Số tiền vay (triệu VNĐ)</label><input type="number" id="loanAmount-<?php echo esc_attr($script_id); ?>" placeholder="Ví dụ: 800" required></div>
+                    <div class="form-row"><label for="loanTerm-<?php echo esc_attr($script_id); ?>">Thời hạn vay (năm)</label><input type="number" id="loanTerm-<?php echo esc_attr($script_id); ?>" value="20" required></div>
+                    <div class="form-row"><label for="interestRate-<?php echo esc_attr($script_id); ?>">Lãi suất (%/năm)</label><input type="number" step="0.1" id="interestRate-<?php echo esc_attr($script_id); ?>" value="7.5" required></div>
                 </form>
+
                 <div class="calculator-result">
                     <h4>Số tiền trả hàng tháng (ước tính):</h4>
-                    <div class="monthly-payment"><span id="result-display">0 ₫</span></div>
+                    <div class="monthly-payment"><span id="result-display-<?php echo esc_attr($script_id); ?>">0 ₫</span></div>
                 </div>
+
             </amp-script>
+
+            <script id="<?php echo esc_attr($script_id); ?>" type="text/plain" target="amp-script">
+                // Code JS nằm ở đây sẽ chạy bên ngoài sandbox và
+                // có thể truy cập document.getElementById
+                
+                const loanAmountInput=document.getElementById("loanAmount-<?php echo esc_attr($script_id); ?>");
+                const loanTermInput=document.getElementById("loanTerm-<?php echo esc_attr($script_id); ?>");
+                const interestRateInput=document.getElementById("interestRate-<?php echo esc_attr($script_id); ?>");
+                const resultDisplay=document.getElementById("result-display-<?php echo esc_attr($script_id); ?>");
+                
+                // Tìm .mortgage-calculator cha gần nhất
+                // (Phải tìm từ thẻ script, vì nó là element duy nhất JS biết)
+                const calculatorDiv=document.getElementById("<?php echo esc_attr($script_id); ?>").closest('.mortgage-calculator');
+
+                function calculateAndDisplay(){
+                    const t=parseFloat(loanAmountInput.value)*1e6||0,e=parseFloat(interestRateInput.value)/1200||0,n=parseInt(loanTermInput.value)*12||0;
+                    let l=0;
+                    t>0&&e>0&&n>0&&(l=t*e*Math.pow(1+e,n)/(Math.pow(1+e,n)-1));
+                    resultDisplay.textContent=l.toLocaleString("vi-VN",{style:"currency",currency:"VND",minimumFractionDigits:0});
+                    
+                    if(calculatorDiv){
+                        l>0?calculatorDiv.classList.add("calculated"):calculatorDiv.classList.remove("calculated");
+                    }
+                }
+                
+                loanAmountInput.addEventListener("input",calculateAndDisplay);
+                loanTermInput.addEventListener("input",calculateAndDisplay);
+                interestRateInput.addEventListener("input",calculateAndDisplay);
+            </script>
+            
+            <?php // --- KẾT THÚC CẤU TRÚC V31 --- ?>
+
         </div>
-        <script id="<?php echo esc_attr($script_id); ?>" type="text/plain" target="amp-script">
-            const loanAmountInput=document.getElementById("loanAmount"),loanTermInput=document.getElementById("loanTerm"),interestRateInput=document.getElementById("interestRate"),resultDisplay=document.getElementById("result-display");function calculateAndDisplay(){const t=parseFloat(loanAmountInput.value)*1e6||0,e=parseFloat(interestRateInput.value)/1200||0,n=parseInt(loanTermInput.value)*12||0;let l=0;t>0&&e>0&&n>0&&(l=t*e*Math.pow(1+e,n)/(Math.pow(1+e,n)-1)),resultDisplay.textContent=l.toLocaleString("vi-VN",{style:"currency",currency:"VND",minimumFractionDigits:0});const a=resultDisplay.closest(".mortgage-calculator");a&&(l>0?a.classList.add("calculated"):a.classList.remove("calculated"))}loanAmountInput.addEventListener("input",calculateAndDisplay),loanTermInput.addEventListener("input",calculateAndDisplay),interestRateInput.addEventListener("input",calculateAndDisplay);
-        </script>
+        
         <?php return ob_get_clean();
     }
 
@@ -299,12 +332,19 @@ final class AMP_Shortcodes_Module {
      *
      */
     public function tien_ich_wrapper($atts, $content = null) {
+        // [FIX V28] Thêm bộ chuẩn hóa dấu nháy cong, giống hệt [schema_howto]
+        $curly_quotes = ['“', '”', '‘', '’'];
+        $straight_quotes = ['"', '"', "'", "'"];
+        $content = str_replace( $curly_quotes, $straight_quotes, $content );
+
         $content = str_replace( ['<p>', '</p>', '<br />', '<br>'], '', $content );
         $output = do_shortcode($content);
         return '<div class="utilities-accordion-container"><div class="utilities-scroller"><amp-accordion>' . $output . '</amp-accordion></div></div>';
     }
     public function tien_ich_item($atts, $content = null) {
+        // [FIX V28] Dùng $atts đơn giản, vì hàm cha đã chuẩn hóa
         $atts = shortcode_atts(['title' => 'Tiện ích', 'icon' => 'default'], $atts);
+        
         $content = str_replace(['<p><ul>', '</ul></p>'], ['<ul>', '</ul>'], $content);
         ob_start(); ?>
         <section>
