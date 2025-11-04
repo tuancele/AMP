@@ -31,6 +31,6 @@ class AMP_Shortcode_Guide_Page {
 
     // Render trang bằng cách gọi file view
     public function render_page() {
-        require_once get_template_directory() . '/inc/admin-views/view-shortcode-guide.php';
+        require_once get_template_directory() . '/inc/view-shortcode-guide.php';
     }
 }

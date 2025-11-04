@@ -89,6 +89,6 @@ class AMP_R2_Settings_Page extends AMP_Admin_Settings_Page_Base {
      * Hàm render riêng cho công cụ migration, gọi file view
      */
     public function render_migration_tool() {
-        require_once get_template_directory() . '/inc/admin-views/view-r2-migration-tool.php';
+        require_once get_template_directory() . '/inc/view-r2-migration-tool.php';
     }
 }
