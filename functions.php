@@ -234,3 +234,47 @@ function tuancele_init_functional_modules() {
     // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 }
 add_action('init', 'tuancele_init_functional_modules');
+
+/**
+ * =========================================================================
+ * NÂNG CẤP LOG V4.0 - TẠO BẢNG CSDL KHI KÍCH HOẠT THEME
+ * =========================================================================
+ */
+
+/**
+ * Hàm này sẽ được gọi khi theme được kích hoạt (hoặc kích hoạt lại)
+ * để tạo bảng CSDL tùy chỉnh cho việc ghi log.
+ */
+function tuancele_create_visitor_log_table() {
+    global $wpdb;
+    
+    // Tên bảng mới của chúng ta, có tiền tố (prefix) của WordPress
+    $table_name = $wpdb->prefix . 'visitor_logs';
+    
+    // Lấy collation của CSDL (ví dụ: utf8mb4_unicode_ci)
+    $charset_collate = $wpdb->get_charset_collate();
+
+    // Câu lệnh SQL để tạo bảng
+    $sql = "CREATE TABLE $table_name (
+        id BIGINT(20) NOT NULL AUTO_INCREMENT,
+        visit_time DATETIME NOT NULL,
+        ip_address VARCHAR(100) NOT NULL,
+        location VARCHAR(255) NOT NULL,
+        isp VARCHAR(255) NOT NULL,
+        org VARCHAR(255) NOT NULL,
+        country_code CHAR(5) NOT NULL,
+        request_uri VARCHAR(1024) NOT NULL,
+        
+        PRIMARY KEY  (id),
+        INDEX time_idx (visit_time),
+        INDEX ip_idx (ip_address),
+        INDEX uri_idx (request_uri(191))
+    ) $charset_collate;";
+
+    // Yêu cầu WordPress thực thi câu lệnh SQL
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+
+// Đăng ký hàm này để nó chạy mỗi khi theme được kích hoạt
+add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
