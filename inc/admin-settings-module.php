@@ -3,6 +3,10 @@
  * inc/admin-settings-module.php
  * Module Class tạo tất cả các trang Cài đặt Theme trong khu vực Admin WP.
  * ĐÃ CẬP NHẬT: Chuyển từ Turnstile sang Google reCAPTCHA v3.
+ *
+ * [TỐI ƯU V8.2 - FIX LỖI THỨ TỰ HOOK]
+ * - Thêm 2 lệnh add_submenu_page() ở cuối hàm create_settings_pages()
+ * để thêm thủ công CPT 'event' và 'image_map' vào menu 'tuancele-amp-settings'.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -37,6 +41,31 @@ final class AMP_Admin_Settings_Module {
         add_submenu_page('tuancele-amp-settings', 'Google reCAPTCHA v3', 'Cấu hình Captcha', 'manage_options', 'tuancele-amp-recaptcha', [ $this, 'recaptcha_settings_page' ]);
         
         add_submenu_page('tuancele-amp-settings', 'Cài đặt các Nút Nổi', 'Các Nút Nổi', 'manage_options', 'tuancele-amp-floating-buttons', [ $this, 'floating_buttons_page' ]);
+
+        // [TỐI ƯU V8.2 - BẮT ĐẦU FIX]
+        // Thêm thủ công các CPT (Event, Image Map) vào menu "Cài đặt AMP".
+        // Các CPT này đã được đăng ký trên hook 'init' với 'show_in_menu' => false.
+        
+        // Thêm submenu cho Image Maps
+        add_submenu_page(
+            'tuancele-amp-settings',                  // $parent_slug
+            __('Image Maps', 'tuancele-amp'),         // $page_title
+            __('Image Maps', 'tuancele-amp'),         // $menu_title
+            'manage_options',                         // $capability
+            'edit.php?post_type=image_map',           // $menu_slug (trỏ đến trang danh sách CPT)
+            false                                     // $function
+        );
+
+        // Thêm submenu cho Sự kiện (Event)
+        add_submenu_page(
+            'tuancele-amp-settings',                  // $parent_slug
+            __('Sự kiện', 'tuancele-amp'),            // $page_title
+            __('Sự kiện', 'tuancele-amp'),            // $menu_title
+            'manage_options',                         // $capability
+            'edit.php?post_type=event',               // $menu_slug (trỏ đến trang danh sách CPT)
+            false                                     // $function
+        );
+        // [TỐI ƯU V8.2 - KẾT THÚC FIX]
     }
 
     /**
@@ -44,6 +73,8 @@ final class AMP_Admin_Settings_Module {
      *
      */
 
+    // ... (Phần còn lại của tệp không thay đổi) ...
+    
     // ... (Hàm shortcode_guide_page() không thay đổi, giữ nguyên) ...
     public function shortcode_guide_page() {
         ?>

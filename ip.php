@@ -1,6 +1,17 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
+ * [TỐI ƯU BẢO MẬT]
+ * Chỉ cho phép Quản trị viên (Admin) đã đăng nhập xem trang này.
+ * Nếu không, chuyển hướng về trang chủ.
+ */
+if ( ! is_user_logged_in() || ! current_user_can('manage_options') ) {
+    wp_redirect( home_url('/') );
+    exit;
+}
+?>
+<?php
+/**
  * Template Name: Trang Log IP
  * Description: Bảng điều khiển so sánh truy cập giữa hôm nay và hôm qua.
  *

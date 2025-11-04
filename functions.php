@@ -3,6 +3,9 @@
  * functions.php
  * Tệp chính của theme, chịu trách nhiệm tải các file chức năng con.
  * PHIÊN BẢN 2.0 (Tái cấu trúc)
+ *
+ * [TỐI ƯU V1 - CSS CACHE]
+ * - Đã thêm logic xóa transient CSS trong hàm tuancele_theme_activation_flush_rewrites().
  */
 
 // Ngăn truy cập trực tiếp
@@ -25,6 +28,8 @@ if ( file_exists( $theme_dir . '/vendor/autoload.php' ) ) {
  * 1. TẢI CÁC THIẾT LẬP GIAO DIỆN (SKIN)
  * =========================================================================
  */
+// QUAN TRỌNG: File này phải được tải TRƯỚC BƯỚC 3
+// vì nó định nghĩa hằng số TUANCELE_CSS_CACHE_KEY
 require_once $theme_dir . '/inc/theme-setup.php'; // (Từ Bước 1)
 
 /**
@@ -96,6 +101,7 @@ add_action('after_switch_theme', 'tuancele_theme_activation_defaults');
 
 /**
  * Flush rewrite rules khi kích hoạt để nhận CPTs mới.
+ * [TỐI ƯU V1]: Đồng thời xóa cache CSS.
  */
 function tuancele_theme_activation_flush_rewrites() {
     // Tải các CPT để đăng ký
@@ -120,6 +126,12 @@ function tuancele_theme_activation_flush_rewrites() {
     
     // Flush rules
     flush_rewrite_rules();
+    
+    // [TỐI ƯU V1 - BẮT ĐẦU]
+    // Xóa transient cache CSS để đảm bảo các thay đổi mới nhất được áp dụng.
+    // Hằng số TUANCELE_CSS_CACHE_KEY đã được định nghĩa trong 'inc/theme-setup.php' (được tải ở đầu file functions.php)
+    delete_transient( TUANCELE_CSS_CACHE_KEY );
+    // [TỐI ƯU V1 - KẾT THÚC]
 }
 add_action('after_switch_theme', 'tuancele_theme_activation_flush_rewrites');
 

@@ -396,7 +396,6 @@ final class AMP_Shortcodes_Module {
                     <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
                     if (!empty($recaptcha_site_key)) : ?>
                     <div class="recaptcha-notice" style="text-align: center; font-size: 10px; color: #777; margin-top: 5px;">
-                        This site is protected by reCAPTCHA.
                     </div>
                     <amp-recaptcha-input
                         layout="nodisplay"

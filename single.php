@@ -2,12 +2,19 @@
 <?php
 /**
  * single.php - Phiên bản tối ưu UX với progress bar tích hợp trong TOC.
+ *
+ * [TỐI ƯU V7 - FIX PROGRESS BAR]
+ * - Thêm id="post-content-article" vào thẻ <article>.
+ * - Thêm target="post-content-article" vào thẻ <amp-position-observer>
+ * để thanh tiến trình theo dõi đúng nội dung bài viết thay vì cả trang.
  */
 get_header();
 ?>
 <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
     <?php if (function_exists('tuancele_amp_display_breadcrumbs')) { tuancele_amp_display_breadcrumbs(); } ?>
-    <article>
+    
+    <?php // [FIX V7] Thêm ID vào thẻ article ?>
+    <article id="post-content-article">
         <h1><?php the_title(); ?></h1>
 
         <?php // --- Thông tin Meta bài viết --- ?>
@@ -58,8 +65,11 @@ get_header();
         }
     </script>
 </amp-animation>
+
+<?php // [FIX V7] Thêm target="post-content-article" ?>
 <amp-position-observer
     on="scroll:readingProgressAnimation.seekTo(percent=event.percent)"
-    layout="nodisplay">
+    layout="nodisplay"
+    target="post-content-article">
 </amp-position-observer>
 <?php get_footer(); ?>

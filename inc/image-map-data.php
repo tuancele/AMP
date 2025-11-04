@@ -2,6 +2,10 @@
 /**
  * inc/image-map-data.php
  * Chứa logic Custom Post Type và Meta Box cho Image Map.
+ *
+ * [TỐI ƯU V8.3 - FIX LỖI INVALID POST TYPE]
+ * - Thay đổi priority của hook 'init' thành 5 (chạy sớm hơn)
+ * để đảm bảo CPT được đăng ký trước khi admin menu cần đến nó.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -33,7 +37,8 @@ function tuancele_register_image_map_cpt() {
         'labels'                => $labels,
         'public'                => false, // Không hiển thị công khai trên website
         'show_ui'               => true, // Hiển thị trong admin
-        'show_in_menu'          => 'tuancele-amp-settings', // Hiển thị dưới menu Cài đặt AMP
+        // [FIX V8.2] Đặt thành false để thêm menu thủ công sau
+        'show_in_menu'          => false, 
         'capability_type'       => 'post',
         'hierarchical'          => false,
         'supports'              => ['title'], // Chỉ cần trường tiêu đề
@@ -44,7 +49,8 @@ function tuancele_register_image_map_cpt() {
     ];
     register_post_type('image_map', $args);
 }
-add_action('init', 'tuancele_register_image_map_cpt');
+// [FIX V8.3] Thay đổi priority từ 10 (mặc định) thành 5
+add_action('init', 'tuancele_register_image_map_cpt', 5);
 
 // =========================================================================
 // 2. META BOX: CẤU HÌNH IMAGE MAP

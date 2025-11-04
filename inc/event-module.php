@@ -2,6 +2,10 @@
 /**
  * inc/event-module.php
  * Module Class quản lý Custom Post Type 'event' và các meta box liên quan.
+ *
+ * [TỐI ƯU V8.3 - FIX LỖI INVALID POST TYPE]
+ * - Thay đổi priority của hook 'init' thành 5 (chạy sớm hơn)
+ * để đảm bảo CPT được đăng ký trước khi admin menu cần đến nó.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -12,8 +16,8 @@ final class AMP_Event_Module {
      * Khởi tạo module, đăng ký các hook.
      */
     public function __construct() {
-        // Đăng ký CPT
-        add_action('init', [ $this, 'register_event_cpt' ]);
+        // [FIX V8.3] Thay đổi priority từ 10 (mặc định) thành 5
+        add_action('init', [ $this, 'register_event_cpt' ], 5);
 
         // Đăng ký Meta Box
         add_action('add_meta_boxes', [ $this, 'add_event_meta_box' ]);
@@ -40,9 +44,18 @@ final class AMP_Event_Module {
             'all_items'             => __('Tất cả Sự kiện', 'tuancele-amp'),
         ];
         $args = [
-            'labels'                => $labels, 'public' => false, 'show_ui' => true, 'show_in_menu' => 'tuancele-amp-settings', // Đã sửa 'true' thành 'tuancele-amp-settings'
-            'capability_type'       => 'post', 'hierarchical' => false, 'supports' => ['title'],
-            'rewrite' => false, 'query_var' => false, 'menu_icon' => 'dashicons-calendar-alt', 'show_in_rest' => false,
+            'labels'                => $labels, 
+            'public'                => false, 
+            'show_ui'               => true, 
+            // [V8.2] Đặt thành false để thêm menu thủ công sau
+            'show_in_menu'          => false, 
+            'capability_type'       => 'post', 
+            'hierarchical'          => false, 
+            'supports'              => ['title'],
+            'rewrite'               => false, 
+            'query_var'             => false, 
+            'menu_icon'             => 'dashicons-calendar-alt', 
+            'show_in_rest'          => false,
         ];
         register_post_type('event', $args);
     }

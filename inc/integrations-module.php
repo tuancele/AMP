@@ -276,9 +276,7 @@ function get_amp_form_html($args) {
             <?php
             if (!empty($recaptcha_site_key)) : ?>
             <div class="form-row" style="text-align: center; font-size: 11px; color: #777;">
-                This site is protected by reCAPTCHA and the Google
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and
-                <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a> apply.
+            
                 
                 <amp-recaptcha-input
                     layout="nodisplay"

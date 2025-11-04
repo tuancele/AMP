@@ -3,9 +3,19 @@
  * inc/theme-setup.php
  * CHỈ CHỨA CÁC THIẾT LẬP GIAO DIỆN (THEME/SKIN).
  * Logic lõi AMP đã được chuyển sang inc/amp-core.php
+ *
+ * [TỐI ƯU V1 - CSS CACHE]
+ * - Đã thêm hằng số TUANCELE_CSS_CACHE_KEY.
+ * - Đã cập nhật hàm tuancele_inject_amp_css_from_file() để sử dụng WordPress Transients.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * Định nghĩa khóa transient cho cache CSS.
+ * Thêm 'v2' để đảm bảo cache cũ (nếu có) bị vô hiệu hóa.
+ */
+define('TUANCELE_CSS_CACHE_KEY', 'tuancele_amp_css_cache_v2');
 
 /**
  * Basic theme setup.
@@ -55,25 +65,40 @@ add_action('wp_enqueue_scripts', 'amp_dequeue_scripts_and_styles', 100);
 /**
  * Inject the content of the AMP CSS file.
  *
+ * [TỐI ƯU V1]
+ * Sử dụng Transients API để cache nội dung file CSS,
+ * tránh việc đọc file (file_get_contents) trên mỗi lần tải trang.
  */
 function tuancele_inject_amp_css_from_file() {
-    $theme_dir = get_template_directory();
-    $min_css_path = $theme_dir . '/css/amp-custom.min.css';
-    $css_path = $theme_dir . '/css/amp-custom.css';
-    $css_content = '';
+    
+    // 1. Thử lấy CSS từ cache (transient) trước
+    $css_content = get_transient( TUANCELE_CSS_CACHE_KEY );
 
-    if ( file_exists( $min_css_path ) && filesize( $min_css_path ) > 0 ) {
-        $css_content = file_get_contents( $min_css_path );
-    }
-    elseif ( file_exists( $css_path ) && filesize( $css_path ) > 0 ) {
-        $css_content = file_get_contents( $css_path );
+    // 2. Nếu cache không có (false), thì mới đọc file
+    if ( false === $css_content ) {
+        $theme_dir = get_template_directory();
+        $min_css_path = $theme_dir . '/css/amp-custom.min.css';
+        $css_path = $theme_dir . '/css/amp-custom.css';
+        $css_content = '';
+
+        if ( file_exists( $min_css_path ) && filesize( $min_css_path ) > 0 ) {
+            $css_content = file_get_contents( $min_css_path );
+        }
+        elseif ( file_exists( $css_path ) && filesize( $css_path ) > 0 ) {
+            $css_content = file_get_contents( $css_path );
+        }
+
+        if ( empty( trim( $css_content ) ) ) {
+            $css_content = '/* ERROR: Could not find a valid CSS file. */';
+        }
+
+        // 3. Lưu nội dung file vừa đọc được vào cache (transient)
+        // Đặt thời gian cache là 1 giờ.
+        set_transient( TUANCELE_CSS_CACHE_KEY, $css_content, HOUR_IN_SECONDS );
     }
 
-    if ( ! empty( trim( $css_content ) ) ) {
-        echo trim($css_content);
-    } else {
-        echo '/* ERROR: Could not find a valid CSS file. */';
-    }
+    // 4. In CSS ra (từ cache hoặc từ file)
+    echo trim($css_content);
 }
 // Hook này phải khớp với hook trong header.php
 add_action('amp_custom_css', 'tuancele_inject_amp_css_from_file');

@@ -209,9 +209,6 @@ function tuancele_amp_comment_form() {
             <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
             if (!empty($recaptcha_site_key)) : ?>
             <div class="comment-form-captcha" id="recaptcha-wrapper" style="font-size: 11px; color: #777; margin-bottom: 10px;">
-                This site is protected by reCAPTCHA and the Google
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a> and
-                <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms of Service</a> apply.
                 
                 <amp-recaptcha-input
                     layout="nodisplay"

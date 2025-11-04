@@ -2,6 +2,19 @@
 /**
  * inc/amp-core.php
  * Chứa toàn bộ logic lõi để xử lý và dọn dẹp AMP.
+ *
+ * [TỐI ƯU V6 - LCP LOGIC CORRECTION]
+ * - Căn cứ theo yêu cầu: LCP trên trang single/page LUÔN LÀ ảnh đầu tiên
+ * trong content, KHÔNG PHẢI ảnh đại diện.
+ *
+ * - Sửa hàm tuancele_responsive_lcp_preload_final():
+ * - Khi is_singular(), hàm này sẽ phân tích post_content để tìm và preload
+ * ảnh đầu tiên (thay vì preload ảnh đại diện).
+ * - Khi is_archive(), hàm vẫn giữ logic cũ (preload ảnh đại diện của bài đầu tiên).
+ *
+ * - Sửa hàm tuancele_mark_first_content_image_as_lcp():
+ * - Quay lại logic V4: Luôn luôn đánh dấu ảnh đầu tiên trong content
+ * khi is_singular(), bất kể có ảnh đại diện hay không.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -12,31 +25,38 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Preload the Largest Contentful Paint (LCP) image.
- *
+ * [V6] Đã sửa logic is_singular()
  */
 function tuancele_responsive_lcp_preload_final() {
     $image_id = 0;
-    // Determine the main image ID based on context
+    
+    // [LOGIC MỚI V6]
     if ( is_singular() ) {
         $post_id = get_the_ID();
-        if ( has_post_thumbnail( $post_id ) ) {
-            $image_id = get_post_thumbnail_id( $post_id );
-        } else {
-            // Fallback to the first image block in content
-            $post_content = get_post_field( 'post_content', $post_id );
-            if ( ! empty( $post_content ) && function_exists('has_blocks') && has_blocks( $post_content ) ) {
-                $blocks = parse_blocks( $post_content );
-                foreach ( $blocks as $block ) {
-                    if ( 'core/image' === $block['blockName'] && ! empty( $block['attrs']['id'] ) ) {
-                        $image_id = (int) $block['attrs']['id'];
-                        break;
-                    }
+        $image_id = 0; // Bắt đầu bằng 0
+        
+        // Luôn ưu tiên tìm ảnh đầu tiên từ post_content
+        $post_content = get_post_field( 'post_content', $post_id );
+        if ( ! empty( $post_content ) && function_exists('has_blocks') && has_blocks( $post_content ) ) {
+            $blocks = parse_blocks( $post_content );
+            foreach ( $blocks as $block ) {
+                if ( 'core/image' === $block['blockName'] && ! empty( $block['attrs']['id'] ) ) {
+                    $image_id = (int) $block['attrs']['id'];
+                    break; // Tìm thấy ảnh đầu tiên, thoát vòng lặp
                 }
             }
         }
-    }
-    elseif ( is_home() || is_front_page() || is_archive() ) {
-        // Fallback for archives: Use the thumbnail of the first post
+        
+        // Fallback: Nếu không dùng block editor, thử tìm bằng regex (ít chính xác hơn)
+        if ( $image_id === 0 && ! empty( $post_content ) ) {
+            if ( preg_match( '/<img[^>]+class="[^"]*wp-image-(\d+)[^"]*"[^>]*>/i', $post_content, $matches ) ) {
+                $image_id = (int) $matches[1];
+            }
+        }
+        
+    // [LOGIC CŨ - GIỮ NGUYÊN]
+    // Trên trang archive, LCP là ảnh đại diện của bài đầu tiên.
+    } elseif ( is_home() || is_front_page() || is_archive() ) {
         global $wp_query;
         if ( $wp_query->have_posts() && isset( $wp_query->posts[0] ) ) {
             $post_id = $wp_query->posts[0]->ID;
@@ -180,15 +200,16 @@ function amp_final_output_cleanup($buffer) {
 }
 
 /**
- * [LCP OPTIMIZER] Đánh dấu hình ảnh đầu tiên trong nội dung là ứng viên LCP.
- *
+ * [LCP OPTIMIZER V6 - FIX LOGIC]
+ * Đánh dấu hình ảnh đầu tiên trong nội dung là ứng viên LCP.
+ * Logic này quay lại V4: Luôn luôn đánh dấu ảnh đầu tiên trên trang singular.
  */
 function tuancele_mark_first_content_image_as_lcp($content) {
     // Chỉ chạy trên các trang đơn (bài viết, trang tĩnh), trong vòng lặp chính, và chỉ một lần.
     if (is_singular() && in_the_loop() && is_main_query()) {
         static $first_image_marked = false;
         if (!$first_image_marked) {
-            // Tìm thẻ <img> đầu tiên và thêm một thuộc tính tạm thời để đánh dấu
+            // [LOGIC MỚI V6] Luôn luôn đánh dấu ảnh đầu tiên trong content.
             $content = preg_replace('/<img/i', '<img data-is-lcp-candidate="true"', $content, 1);
             $first_image_marked = true;
         }
