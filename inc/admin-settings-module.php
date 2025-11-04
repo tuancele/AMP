@@ -2,11 +2,7 @@
 /**
  * inc/admin-settings-module.php
  * Module Class tạo tất cả các trang Cài đặt Theme trong khu vực Admin WP.
- * ĐÃ CẬP NHẬT: Chuyển từ Turnstile sang Google reCAPTCHA v3.
- *
- * [TỐI ƯU V8.2 - FIX LỖI THỨ TỰ HOOK]
- * - Thêm 2 lệnh add_submenu_page() ở cuối hàm create_settings_pages()
- * để thêm thủ công CPT 'event' và 'image_map' vào menu 'tuancele-amp-settings'.
+ * [UPDATE]: Thêm checkbox Bật/Tắt cho reCAPTCHA và logic ẩn/hiện.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -427,10 +423,11 @@ final class AMP_Admin_Settings_Module {
         add_settings_field('tuancele_r2_migration_tool', 'Trạng thái & Hành động', [ $this, 'r2_migration_tool_callback' ], 'tuancele-amp-r2', 'tuancele_r2_migration_section');
 
 
-        // [THAY ĐỔI] Đăng ký setting cho reCAPTCHA
+        // [ĐÃ SỬA] Đăng ký setting cho reCAPTCHA (Thêm trường 'enable_recaptcha')
         register_setting('tuancele_amp_recaptcha_group', 'tuancele_recaptcha_settings');
         add_settings_section('tuancele_recaptcha_main_section', 'Khóa API Google reCAPTCHA v3', null, 'tuancele-amp-recaptcha');
         $recaptcha_fields = [
+            'enable_recaptcha'      => ['label' => 'Kích hoạt reCAPTCHA v3', 'type' => 'checkbox'],
             'recaptcha_v3_site_key' => ['label' => 'Site Key (v3)'], 
             'recaptcha_v3_secret_key' => ['label' => 'Secret Key (v3)', 'type' => 'password']
         ];
@@ -458,7 +455,7 @@ final class AMP_Admin_Settings_Module {
      */
     
     // ... (Các hàm callback cho integrations, schema, smtp, r2 không đổi) ...
-public function integrations_field_callback($args) {
+    public function integrations_field_callback($args) {
         $options = get_option('tuancele_integrations_settings', []);
         $id = $args['id'];
         $value = $options[$id] ?? '';
@@ -620,13 +617,26 @@ public function integrations_field_callback($args) {
         <?php
     }
 
-    // [THAY ĐỔI] Hàm callback mới cho reCAPTCHA
+    // [ĐÃ SỬA] Hàm callback cho reCAPTCHA (hỗ trợ 'checkbox')
     public function recaptcha_field_callback($args) {
         $options = get_option('tuancele_recaptcha_settings', []);
         $id = $args['id'];
         $value = $options[$id] ?? '';
         $type = $args['type'] ?? 'text';
-        echo '<input type="' . esc_attr($type) . '" id="tuancele_recaptcha_' . esc_attr($id) . '" name="tuancele_recaptcha_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" />';
+        
+        switch ($type) {
+            case 'checkbox':
+                // Thêm 'name' attribute chính xác
+                echo '<label><input type="checkbox" id="tuancele_recaptcha_' . esc_attr($id) . '" name="tuancele_recaptcha_settings[' . esc_attr($id) . ']" value="on" ' . checked('on', $value, false) . '></label>';
+                break;
+            case 'password':
+                echo '<input type="password" id="tuancele_recaptcha_' . esc_attr($id) . '" name="tuancele_recaptcha_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" />';
+                break;
+            case 'text':
+            default:
+                echo '<input type="text" id="tuancele_recaptcha_' . esc_attr($id) . '" name="tuancele_recaptcha_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
+                break;
+        }
     }
 
     // --- Callbacks cho Floating Buttons ---
@@ -642,13 +652,31 @@ public function integrations_field_callback($args) {
      *
      */
     public function settings_admin_scripts($hook) {
-        $pages_with_toggle = ['cai-dat-amp_page_tuancele-amp-smtp', 'cai-dat-amp_page_tuancele-amp-r2'];
+        // [ĐÃ SỬA] Thêm trang reCAPTCHA vào mảng
+        $pages_with_toggle = [
+            'cai-dat-amp_page_tuancele-amp-smtp', 
+            'cai-dat-amp_page_tuancele-amp-r2',
+            'cai-dat-amp_page_tuancele-amp-recaptcha' // Thêm trang này
+        ];
 
         if ( in_array($hook, $pages_with_toggle) ) {
+            
+            // Script này dùng chung cho cả 3 trang (SMTP, R2, reCAPTCHA)
+            // Nó tự động tìm checkbox có name chứa "[enable_]" và ẩn tất cả các hàng <tr> phía sau
             $script_toggle = "
             jQuery(document).ready(function($) {
-                const mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_\"]');
-                if (mainCheckbox.length > 0) {
+                // [ĐÃ SỬA] Tìm checkbox enable cụ thể trong ngữ cảnh trang
+                var mainCheckbox = null;
+                
+                if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-smtp') ) {
+                    mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_smtp]\"]');
+                } else if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-r2') ) {
+                    mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_r2]\"]');
+                } else if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-recaptcha') ) {
+                    mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_recaptcha]\"]');
+                }
+
+                if (mainCheckbox && mainCheckbox.length > 0) {
                     const dependentFields = mainCheckbox.closest('tr').nextAll();
                     function toggleFields() {
                         if (mainCheckbox.is(':checked')) { dependentFields.show(); } else { dependentFields.hide(); }
@@ -682,4 +710,4 @@ public function integrations_field_callback($args) {
             wp_add_inline_script('tuancele-r2-migration', $nonce_data_script, 'before');
         }
     }
-    }
+} // Kết thúc Class

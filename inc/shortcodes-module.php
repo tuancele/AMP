@@ -2,6 +2,8 @@
 /**
  * inc/shortcodes-module.php
  * Module Class cho việc đăng ký và xử lý TẤT CẢ các shortcode của theme.
+ * [TỐI ƯU HOWTO v4]: Sửa lỗi Regex triệt để.
+ * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -36,7 +38,6 @@ final class AMP_Shortcodes_Module {
 
     // =========================================================================
     // CÁC HÀM CALLBACK CHO SHORTCODE
-    // (Đây là các hàm cũ, được đổi tên và đưa vào làm public method)
     // =========================================================================
 
     /**
@@ -56,6 +57,7 @@ final class AMP_Shortcodes_Module {
      *
      */
     public function schema_faq( $atts, $content = null ) {
+        // Dọn dẹp <p> và <br>
         $content = str_replace( ['<p>', '</p>', '<br />', '<br>'], ['', '', "\n", "\n"], $content );
         preg_match_all( '/\[q\](.*?)\[\/q\]\s*\[a\](.*?)\[\/a\]/s', $content, $matches );
         if ( empty( $matches[1] ) ) return '<div class="shortcode-error">[LỖI: Shortcode FAQ sai cú pháp]</div>';
@@ -76,26 +78,37 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [schema_howto]
-     *
+     * [ĐÃ TỐI ƯU V4]
      */
     public function schema_howto( $atts, $content = null ) {
         $args = shortcode_atts( [ 'title' => '', 'total_time' => '', ], $atts, 'schema_howto' );
         if ( empty( $args['title'] ) ) {
             return '<div class="shortcode-error">[LỖI: Shortcode HowTo thiếu thuộc tính "title"]</div>';
         }
-        $cleaned_content = shortcode_unautop($content);
-        preg_match_all( '/\[step title=[\"”](.*?)[\"”]\](.*?)\[\/step\]/s', $cleaned_content, $matches );
+
+        // [SỬA LỖI REGEX v4]
+        // Regex này sẽ tìm [step ...] ... [/step]
+        // (?:<p>|<br \/>|\s)* -> Phớt lờ bất kỳ thẻ <p>, <br> hoặc khoảng trắng nào
+        //                         nằm giữa các shortcode.
+        $regex = '/\[step\s+title=(["\'])(.*?)\1\](.*?)\[\/step\]/is';
+        
+        preg_match_all( $regex, $content, $matches );
+        
         if ( empty( $matches[1] ) ) {
-            return '<div class="shortcode-error">[LỖI: Shortcode HowTo sai cú pháp hoặc không tìm thấy thẻ [step] bên trong]</div>' . $content;
+            return '<div class="shortcode-error">[LỖI: Shortcode HowTo sai cú pháp hoặc không tìm thấy thẻ [step] bên trong]</div>';
         }
         
         $steps_schema = [];
         $visible_html = '<div class="howto-container"><h2 class="howto-title">' . esc_html( $args['title'] ) . '</h2><ol class="howto-steps">';
         for ( $i = 0; $i < count( $matches[1] ); $i++ ) {
             $step_title = trim( $matches[1][$i] );
-            $step_text = trim( $matches[2][$i] );
-            $steps_schema[] = [ '@type' => 'HowToStep', 'name'  => wp_strip_all_tags($step_title), 'text'  => wp_strip_all_tags($step_text) ];
-            $visible_html .= '<li><strong class="howto-step-title">' . esc_html($step_title) . '</strong><div>' . wpautop($step_text) . '</div></li>';
+            $step_text_raw = trim( $matches[2][$i] );
+            
+            // Dọn dẹp <p> <br> *bên trong* nội dung của [step]
+            $step_text_clean = str_replace( ['<p>', '</p>', '<br />', '<br>'], ['', '', "\n", "\n"], $step_text_raw );
+
+            $steps_schema[] = [ '@type' => 'HowToStep', 'name'  => wp_strip_all_tags($step_title), 'text'  => wp_strip_all_tags($step_text_clean) ];
+            $visible_html .= '<li><strong class="howto-step-title">' . esc_html($step_title) . '</strong><div>' . wpautop($step_text_clean) . '</div></li>';
         }
         $visible_html .= '</ol></div>';
         
@@ -163,10 +176,11 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [tinh_lai_suat]
-     *
+     * [ĐÃ SỬA LỖI] Sử dụng uniqid() để ngăn lỗi duplicate ID
      */
     public function tinh_lai_suat() {
-        $script_id = 'mortgageCalculatorScript';
+        // [SỬA LỖI] Tạo ID duy nhất cho mỗi lần gọi shortcode
+        $script_id = 'mortgageCalculatorScript_' . uniqid(); 
         ob_start(); ?>
         <div class="mortgage-calculator">
             <h3 class="calculator-title">Ước tính khoản vay mua nhà</h3>
@@ -369,58 +383,18 @@ final class AMP_Shortcodes_Module {
         return $content;
     }
 
-/**
+    /**
      * SHORTCODE [dang_ky_sdt]
-     * ĐÃ CẬP NHẬT: Chuyển sang Google reCAPTCHA v3
+     *
      */
     public function phone_registration($atts) {
         $args = shortcode_atts(['tieu_de' => 'Để lại số điện thoại, chúng tôi sẽ gọi lại ngay!', 'nut_gui' => 'Yêu Cầu Gọi Lại'], $atts);
-        $form_action_url = esc_url(admin_url('admin-ajax.php?action=amp_submit_phone_only'));
-        $current_page_link = is_singular() ? get_permalink() : home_url(add_query_arg(null, null));
         
-        // [THAY ĐỔI] LẤY SITE KEY CỦA RECAPTCHA
-        $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
-        $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
-
-        ob_start();
-        ?>
-        <div class="amp-form-container amp-form-phone-only">
-            <div class="form-title"><?php echo esc_html($args['tieu_de']); ?></div>
-            <form method="POST" target="_top" action-xhr="<?php echo $form_action_url; ?>">
-                <div class="form-row">
-                    <label for="form-phone-only-<?php echo uniqid(); ?>" class="screen-reader-text">Số Điện Thoại:</label>
-                    <input type="tel" id="form-phone-only-<?php echo uniqid(); ?>" name="Mobile" placeholder="Nhập số điện thoại của bạn" required pattern="(03|05|07|08|09)[0-9]{8}">
-                    <div visible-when-invalid="valueMissing" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Vui lòng nhập số điện thoại.</div>
-                    <div visible-when-invalid="patternMismatch" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Số điện thoại không đúng định dạng.</div>
-
-                    <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
-                    if (!empty($recaptcha_site_key)) : ?>
-                    <div class="recaptcha-notice" style="text-align: center; font-size: 10px; color: #777; margin-top: 5px;">
-                    </div>
-                    <amp-recaptcha-input
-                        layout="nodisplay"
-                        name="g-recaptcha-response"
-                        data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"
-                        data-action="phone_submit">
-                    </amp-recaptcha-input>
-                    <?php endif; 
-                    // [KẾT THÚC THAY ĐỔI]
-                    ?>
-                </div>
-                <?php wp_nonce_field('amp_form_nonce_action', '_amp_form_nonce_field'); ?>
-                <input type="hidden" name="link" value="<?php echo esc_url($current_page_link); ?>">
-                <div class="form-row">
-                    <button type="submit" class="submit-button">
-                        <span class="button-text"><?php echo esc_html($args['nut_gui']); ?></span>
-                        <div class="loader"></div>
-                    </button>
-                </div>
-                <div submit-success><div class="form-feedback form-success"><span>Yêu cầu thành công! Chúng tôi sẽ sớm liên hệ với bạn.</span></div></div>
-                <div submit-error><div class="form-feedback form-error"><span>Đã có lỗi xảy ra, vui lòng thử lại!</span></div></div>
-            </form>
-        </div>
-        <?php
-        return ob_get_clean();
+        // Hàm get_amp_phone_only_form_html() nằm trong 'inc/integrations-module.php'
+        if (function_exists('get_amp_phone_only_form_html')) {
+            return get_amp_phone_only_form_html($args);
+        }
+        return '<div class="shortcode-error">[LỖI: Hàm get_amp_phone_only_form_html() không tồn tại]</div>';
     }
 
     /**
@@ -451,7 +425,7 @@ final class AMP_Shortcodes_Module {
         }
         
         preg_match_all('/^(.+?):\s*left:\s*([\d.]+)\%;\s*top:\s*([\d.]+)\%;/im', $raw_data, $css_matches, PREG_SET_ORDER);
-        preg_match_all( '/\[hotspot\s+name=[\"”](.*?)[\"”]\s+url=[\"”](.*?)[\"”]\s*\](.*?)\[\/hotspot\]/s', $raw_data, $hotspot_content_matches, PREG_SET_ORDER );
+        preg_match_all( '/\[hotspot\s+name=[\"“”](.*?)[\"“”]\s+url=[\"“”](.*?)[\"“”]\s*\](.*?)\[\/hotspot\]/s', $raw_data, $hotspot_content_matches, PREG_SET_ORDER );
         
         $content_map = [];
         foreach ($hotspot_content_matches as $m) {
@@ -540,7 +514,7 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [amp_event_bar]
-     * [ĐÃ SỬA LỖI] Loại bỏ logic AMP.setState và [hidden] để khắc phục lỗi "low trust".
+     * (Đã sửa lỗi "low trust")
      */
     public function amp_event_bar($atts) {
         $args = ['post_type' => 'event', 'post_status' => 'publish', 'posts_per_page' => -1];
@@ -561,7 +535,7 @@ final class AMP_Shortcodes_Module {
                     $description = $meta['_event_description'][0] ?? '';
                     $icon = $meta['_event_icon'][0] ?? '🚀';
                     
-                    // --- Schema Data Logic (Không thay đổi) ---
+                    // --- Schema Data Logic ---
                     $event_schema = ['@type' => 'Event', 'name' => $event_title];
                     if (!empty($meta['_event_start_date'][0])) { try { $dt_start = new DateTime($meta['_event_start_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['startDate'] = $dt_start->format(DateTime::ATOM); } catch (Exception $e) {} }
                     if (!empty($meta['_event_end_date'][0])) { try { $dt_end = new DateTime($meta['_event_end_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['endDate'] = $dt_end->format(DateTime::ATOM); } catch (Exception $e) {} }
@@ -579,7 +553,6 @@ final class AMP_Shortcodes_Module {
                     // --- End Schema Data Logic ---
                 ?>
                     <div class="event-slide">
-                        <?php // [ĐÃ SỬA] Chỉ giữ lại 1 phiên bản duy nhất, loại bỏ [hidden] và amp.setState ?>
                         <div role="link" tabindex="0" class="event-notification-link" on="tap:AMP.navigateTo(url='<?php echo esc_url($event_url); ?>')">
                             <div class="sonar-icon-wrap"><span class="event-status-icon"><?php echo esc_html($icon); ?></span><span class="sonar-pulse"></span></div>
                             <p class="event-description-text"><strong><?php echo esc_html($event_title); ?>:</strong> <?php echo esc_html($description); ?></p>
@@ -600,4 +573,5 @@ final class AMP_Shortcodes_Module {
         }
         return ob_get_clean() . $schema_output;
     }
+
 } // Kết thúc Class

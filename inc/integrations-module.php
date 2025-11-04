@@ -2,7 +2,8 @@
 /**
  * inc/integrations-module.php
  * Module Class xử lý Form, Tích hợp (Zoho, SMTP) và gửi mail.
- * [PHIÊN BẢN HOÀN CHỈNH]: Đã sửa lỗi gọi hàm reCAPTCHA và khôi phục bảo mật.
+ * [UPDATE]: Đã thêm logic kiểm tra cờ 'enable_recaptcha' (Bật/Tắt)
+ * trước khi thực hiện xác thực.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -34,15 +35,30 @@ final class AMP_Integrations_Module {
      * CÁC HÀM HELPER BẢO MẬT (GOOGLE RECAPTCHA)
      * =========================================================================
      */
+
+    /**
+     * [ĐÃ SỬA] Lấy Secret Key, nhưng chỉ khi reCAPTCHA được bật.
+     */
     private function get_recaptcha_secret_key() { 
         $options = get_option('tuancele_recaptcha_settings', []);
+        
+        // Nếu không bật, trả về rỗng
+        if ( ! isset($options['enable_recaptcha']) || $options['enable_recaptcha'] !== 'on' ) {
+            return '';
+        }
+        
+        // Nếu bật, trả về key
         return $options['recaptcha_v3_secret_key'] ?? '';
     }
 
+    /**
+     * Xác thực token
+     */
     private function verify_recaptcha_token($token, $ip, $action) {
-        $secret_key = $this->get_recaptcha_secret_key();
+        $secret_key = $this->get_recaptcha_secret_key(); // Đã bao gồm logic kiểm tra 'enable'
+        
         if (empty($secret_key) || empty($token)) {
-            // Nếu token rỗng (do widget lỗi), trả về false ngay
+            // Sẽ không bao giờ chạy nếu key rỗng, nhưng để an toàn
             return false;
         }
         $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
@@ -50,13 +66,12 @@ final class AMP_Integrations_Module {
         ]);
         
         if (is_wp_error($response)) { 
-            error_log('reCAPTCHA WP_Error: ' . $response->get_error_message()); // Ghi log lỗi nếu không gọi được Google
+            error_log('reCAPTCHA WP_Error: ' . $response->get_error_message());
             return false; 
         }
         
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
-        // Kiểm tra 'success'
         return isset($body['success']) && $body['success'] === true;
     }
 
@@ -130,7 +145,8 @@ final class AMP_Integrations_Module {
         
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
 
-        // [KHÔI PHỤC LẠI] Bật lại reCAPTCHA
+        // [ĐÃ SỬA] Kiểm tra logic get_recaptcha_secret_key()
+        // Hàm này sẽ trả về rỗng nếu reCAPTCHA bị tắt.
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
             if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'contact_form')) {
@@ -181,7 +197,7 @@ final class AMP_Integrations_Module {
 
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
 
-        // [KHÔI PHỤC LẠI] Bật lại reCAPTCHA
+        // [ĐÃ SỬA] Kiểm tra logic get_recaptcha_secret_key()
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
             if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'phone_submit')) {
@@ -255,8 +271,10 @@ function get_amp_form_html($args) {
     $form_action_url = esc_url(admin_url('admin-ajax.php?action=amp_form_submit'));
     $current_page_link = (is_singular() ? get_permalink() : home_url(add_query_arg(null, null)));
 
+    // [ĐÃ SỬA] Lấy cài đặt reCAPTCHA
     $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
     $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
+    $is_recaptcha_enabled = isset($recaptcha_options['enable_recaptcha']) && $recaptcha_options['enable_recaptcha'] === 'on';
 
     ob_start(); ?>
     <div class="amp-form-container">
@@ -276,7 +294,8 @@ function get_amp_form_html($args) {
             <div class="form-row"><label for="form-email-<?php echo uniqid(); ?>">Email (Không bắt buộc):</label><input type="email" id="form-email-<?php echo uniqid(); ?>" name="Email" placeholder="vidu@email.com"></div>
             
             <?php
-            if (!empty($recaptcha_site_key)) : ?>
+            // [ĐÃ SỬA] Kiểm tra cả $is_recaptcha_enabled
+            if ($is_recaptcha_enabled && !empty($recaptcha_site_key)) : ?>
             <div class="form-row" style="text-align: center; font-size: 11px; color: #777;">
             
                 
@@ -298,4 +317,71 @@ function get_amp_form_html($args) {
         </form>
     </div>
     <?php return ob_get_clean();
+}
+
+/**
+ * =========================================================================
+ * CÁC HÀM TRỢ GIÚP (HELPER FUNCTIONS) CHO FORM [dang_ky_sdt]
+ * (Hàm này được chuyển từ shortcodes-module.php sang đây để dùng chung logic)
+ * =========================================================================
+ */
+// GHI CHÚ: File shortcodes-module.php của bạn cần phải gọi hàm này.
+// Bạn hãy kiểm tra lại file đó:
+// 
+// public function phone_registration($atts) {
+//    $args = shortcode_atts(['tieu_de' => 'Để lại số điện thoại, chúng tôi sẽ gọi lại ngay!', 'nut_gui' => 'Yêu Cầu Gọi Lại'], $atts);
+//    if (function_exists('get_amp_phone_only_form_html')) {
+//        return get_amp_phone_only_form_html($args); // Đảm bảo nó gọi hàm này
+//    }
+//    return '';
+// }
+// 
+//
+function get_amp_phone_only_form_html($args) {
+    $form_action_url = esc_url(admin_url('admin-ajax.php?action=amp_submit_phone_only'));
+    $current_page_link = is_singular() ? get_permalink() : home_url(add_query_arg(null, null));
+    
+    // [ĐÃ SỬA] LẤY CÀI ĐẶT RECAPTCHA
+    $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
+    $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
+    $is_recaptcha_enabled = isset($recaptcha_options['enable_recaptcha']) && $recaptcha_options['enable_recaptcha'] === 'on';
+
+    ob_start();
+    ?>
+    <div class="amp-form-container amp-form-phone-only">
+        <div class="form-title"><?php echo esc_html($args['tieu_de']); ?></div>
+        <form method="POST" target="_top" action-xhr="<?php echo $form_action_url; ?>">
+            <div class="form-row">
+                <label for="form-phone-only-<?php echo uniqid(); ?>" class="screen-reader-text">Số Điện Thoại:</label>
+                <input type="tel" id="form-phone-only-<?php echo uniqid(); ?>" name="Mobile" placeholder="Nhập số điện thoại của bạn" required pattern="(03|05|07|08|09)[0-9]{8}">
+                <div visible-when-invalid="valueMissing" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Vui lòng nhập số điện thoại.</div>
+                <div visible-when-invalid="patternMismatch" validation-for="form-phone-only-<?php echo uniqid(); ?>" class="validation-error">Số điện thoại không đúng định dạng.</div>
+
+                <?php // [ĐÃ SỬA] THÊM HTML CỦA RECAPTCHA V3 (Kiểm tra cờ enable)
+                if ($is_recaptcha_enabled && !empty($recaptcha_site_key)) : ?>
+                <div class="recaptcha-notice" style="text-align: center; font-size: 10px; color: #777; margin-top: 5px;">
+                </div>
+                <amp-recaptcha-input
+                    layout="nodisplay"
+                    name="g-recaptcha-response"
+                    data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"
+                    data-action="phone_submit">
+                </amp-recaptcha-input>
+                <?php endif; 
+                ?>
+            </div>
+            <?php wp_nonce_field('amp_form_nonce_action', '_amp_form_nonce_field'); ?>
+            <input type="hidden" name="link" value="<?php echo esc_url($current_page_link); ?>">
+            <div class="form-row">
+                <button type="submit" class="submit-button">
+                    <span class="button-text"><?php echo esc_html($args['nut_gui']); ?></span>
+                    <div class="loader"></div>
+                </button>
+            </div>
+            <div submit-success><div class="form-feedback form-success"><span>Yêu cầu thành công! Chúng tôi sẽ sớm liên hệ với bạn.</span></div></div>
+            <div submit-error><div class="form-feedback form-error"><span>Đã có lỗi xảy ra, vui lòng thử lại! (Lỗi: {{message}})</span></div></div>
+        </form>
+    </div>
+    <?php
+    return ob_get_clean();
 }

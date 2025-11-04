@@ -2,7 +2,7 @@
 /**
  * inc/comments-module.php
  * Module Class xử lý hệ thống bình luận AMP tùy chỉnh.
- * ĐÃ CẬP NHẬT: Chuyển từ Turnstile sang Google reCAPTCHA v3.
+ * [UPDATE]: Đã thêm logic kiểm tra cờ 'enable_recaptcha' (Bật/Tắt).
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -24,8 +24,13 @@ final class AMP_Comments_Module {
      * =========================================================================
      */
     public function load_recaptcha_script_for_comments() {
+        // [ĐÃ SỬA] Thêm logic kiểm tra cờ enable
+        $options = get_option('tuancele_recaptcha_settings', []);
+        $is_enabled = isset($options['enable_recaptcha']) && $options['enable_recaptcha'] === 'on';
+        
         static $script_added = false;
-        if ( $script_added || is_admin() ) {
+        // Nếu đã thêm, hoặc là admin, hoặc reCAPTCHA bị tắt -> không tải script
+        if ( $script_added || is_admin() || !$is_enabled ) {
             return;
         }
         add_action( 'wp_head', function() {
@@ -53,14 +58,13 @@ final class AMP_Comments_Module {
 
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
         
-        // [THAY ĐỔI] XÁC THỰC GOOGLE RECAPTCHA
-        if (function_exists('tuancele_get_recaptcha_secret_key') && !empty(tuancele_get_recaptcha_secret_key()) ) {
+        // [ĐÃ SỬA] Kiểm tra logic get_recaptcha_secret_key()
+        if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'submit_comment')) {
+            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'submit_comment')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }
-        // [KẾT THÚC THAY ĐỔI]
         
         // Logic kiểm tra IP (giữ nguyên)
         $country_code = $this->get_ip_country_code($user_ip);
@@ -98,20 +102,28 @@ final class AMP_Comments_Module {
 
     /**
      * =========================================================================
-     * [MỚI] CÁC HÀM HELPER BẢO MẬT (GOOGLE RECAPTCHA)
+     * CÁC HÀM HELPER BẢO MẬT (GOOGLE RECAPTCHA)
      * =========================================================================
+     */
+    
+    /**
+     * [ĐÃ SỬA] Lấy Secret Key, nhưng chỉ khi reCAPTCHA được bật.
      */
     private function get_recaptcha_secret_key() { 
         $options = get_option('tuancele_recaptcha_settings', []);
+        
+        // Nếu không bật, trả về rỗng
+        if ( ! isset($options['enable_recaptcha']) || $options['enable_recaptcha'] !== 'on' ) {
+            return '';
+        }
+        
+        // Nếu bật, trả về key
         return $options['recaptcha_v3_secret_key'] ?? '';
     }
 
-    // File: inc/comments-module.php
-
     private function verify_recaptcha_token($token, $ip, $action) {
-        $secret_key = $this->get_recaptcha_secret_key();
+        $secret_key = $this->get_recaptcha_secret_key(); // Đã bao gồm logic kiểm tra 'enable'
         if (empty($secret_key) || empty($token)) {
-            // Nếu token rỗng (do widget lỗi), trả về false ngay
             return false;
         }
         $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
@@ -119,19 +131,16 @@ final class AMP_Comments_Module {
         ]);
         
         if (is_wp_error($response)) { 
-            error_log('reCAPTCHA WP_Error: ' . $response->get_error_message()); // Ghi log lỗi nếu không gọi được Google
+            error_log('reCAPTCHA WP_Error: ' . $response->get_error_message());
             return false; 
         }
         
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
-        // [THỬ GỠ LỖI]
-        // Tạm thời CHỈ KIỂM TRA 'success', bỏ qua 'score' và 'action'
         return isset($body['success']) && $body['success'] === true;
     }
 
     private function get_ip_country_code($ip) {
-        // ... (Hàm này không thay đổi, giữ nguyên) ...
         if (in_array($ip, ['127.0.0.1', '::1', 'Invalid IP'])) return 'VN';
         $cache_key = 'ip_country_code_' . md5($ip);
         if (false !== ($cached_code = get_transient($cache_key))) return $cached_code;
@@ -153,7 +162,6 @@ final class AMP_Comments_Module {
  * =========================================================================
  */
 
-// ... (Hàm tuancele_amp_comment_callback() không thay đổi, giữ nguyên) ...
 function tuancele_amp_comment_callback( $comment, $args, $depth ) {
     $GLOBALS['comment'] = $comment;
     ?>
@@ -188,9 +196,10 @@ function tuancele_amp_comment_form() {
     $commenter = wp_get_current_commenter();
     $form_action_url = esc_url( admin_url('admin-ajax.php?action=amp_submit_comment') );
     
-    // [THAY ĐỔI] LẤY SITE KEY CỦA RECAPTCHA
+    // [ĐÃ SỬA] LẤY CÀI ĐẶT RECAPTCHA
     $recaptcha_options = get_option('tuancele_recaptcha_settings', []);
     $recaptcha_site_key = $recaptcha_options['recaptcha_v3_site_key'] ?? ''; 
+    $is_recaptcha_enabled = isset($recaptcha_options['enable_recaptcha']) && $recaptcha_options['enable_recaptcha'] === 'on';
     ?>
     <div id="respond" class="comment-respond">
         <h3 id="reply-title" class="comment-reply-title">Gửi bình luận của bạn</h3>
@@ -206,8 +215,8 @@ function tuancele_amp_comment_form() {
             
             <?php wp_nonce_field('amp_comment_nonce_action', '_amp_comment_nonce_field'); ?>
             
-            <?php // [THAY ĐỔI] THÊM HTML CỦA RECAPTCHA V3
-            if (!empty($recaptcha_site_key)) : ?>
+            <?php // [ĐÃ SỬA] THÊM HTML CỦA RECAPTCHA V3 (Kiểm tra cờ enable)
+            if ($is_recaptcha_enabled && !empty($recaptcha_site_key)) : ?>
             <div class="comment-form-captcha" id="recaptcha-wrapper" style="font-size: 11px; color: #777; margin-bottom: 10px;">
                 
                 <amp-recaptcha-input
