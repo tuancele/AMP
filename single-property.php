@@ -8,6 +8,7 @@
  * - Đã fix lỗi breadcrumb (hiển thị 1 lần, hỗ trợ CPT).
  * - Đã xóa [tinh_lai_suat] để fix lỗi AMP.
  * - Đã fix logic tạo Schema BĐS, tự động thêm vào @graph.
+ * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
  */
 
 get_header();
@@ -38,7 +39,8 @@ get_header();
     $map_id = $get_val('_property_map_id');
     ?>
     
-    <article>
+    <?php // [FIX LỖI ANIMATION] Thêm id vào thẻ article ?>
+    <article id="post-content-article">
         <h1><?php the_title(); ?></h1>
 
         <?php // --- Thông tin Meta (Lấy từ single.php) --- ?>
@@ -146,6 +148,9 @@ get_header();
 
 <?php
 // --- Logic cho thanh tiến trình đọc (Giống single.php) ---
+// [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
+// Chỉ in các script này nếu Mục lục (TOC) đã được tạo
+if ( ! empty( $GLOBALS['has_toc'] ) && $GLOBALS['has_toc'] === true ) : 
 ?>
 <amp-animation id="readingProgressAnimation" layout="nodisplay">
     <script type="application/json">
@@ -165,7 +170,11 @@ get_header();
 </amp-animation>
 <amp-position-observer
     on="scroll:readingProgressAnimation.seekTo(percent=event.percent)"
-    layout="nodisplay">
+    layout="nodisplay"
+    target="post-content-article">
 </amp-position-observer>
+<?php 
+endif; // Kết thúc kiểm tra $GLOBALS['has_toc']
 
-<?php get_footer(); ?>
+get_footer(); 
+?>

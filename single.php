@@ -7,6 +7,7 @@
  * - Thêm id="post-content-article" vào thẻ <article>.
  * - Thêm target="post-content-article" vào thẻ <amp-position-observer>
  * để thanh tiến trình theo dõi đúng nội dung bài viết thay vì cả trang.
+ * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
  */
 get_header();
 ?>
@@ -46,8 +47,11 @@ get_header();
 /**
  * =========================================================================
  * LOGIC MỚI CHO THANH TIẾN TRÌNH ĐỌC (TÍCH HỢP VÀO TOC)
+ * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
  * =========================================================================
  */
+// Chỉ in các script này nếu Mục lục (TOC) đã được tạo
+if ( ! empty( $GLOBALS['has_toc'] ) && $GLOBALS['has_toc'] === true ) : 
 ?>
 <amp-animation id="readingProgressAnimation" layout="nodisplay">
     <script type="application/json">
@@ -72,4 +76,8 @@ get_header();
     layout="nodisplay"
     target="post-content-article">
 </amp-position-observer>
-<?php get_footer(); ?>
+<?php 
+endif; // Kết thúc kiểm tra $GLOBALS['has_toc']
+
+get_footer(); 
+?>

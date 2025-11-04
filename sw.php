@@ -3,7 +3,7 @@
 header('Content-Type: application/javascript');
 
 // Tăng phiên bản CACHE_NAME lên v3 để buộc cập nhật service worker
-const CACHE_NAME = 'tuancele-amp-v3'; 
+$CACHE_NAME = 'tuancele-amp-v3'; // [ĐÃ SỬA] Đổi 'const' (JS) thành '$' (PHP)
 
 // Lấy các URL động từ WordPress
 $urls_to_cache = [
@@ -16,7 +16,7 @@ $urls_to_cache = [
 ];
 ?>
 
-const CACHE_NAME = '<?php echo CACHE_NAME; ?>';
+const CACHE_NAME = '<?php echo $CACHE_NAME; ?>'; // Dòng này bây giờ sẽ hoạt động chính xác
 // Chuyển mảng PHP thành mảng JavaScript
 const PRECACHE_URLS = <?php echo json_encode($urls_to_cache, JSON_UNESCAPED_SLASHES); ?>;
 

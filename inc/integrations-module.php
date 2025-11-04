@@ -2,7 +2,7 @@
 /**
  * inc/integrations-module.php
  * Module Class xử lý Form, Tích hợp (Zoho, SMTP) và gửi mail.
- * ĐÃ SỬA LỖI: Xóa typo 'D' ở dòng 214.
+ * [PHIÊN BẢN HOÀN CHỈNH]: Đã sửa lỗi gọi hàm reCAPTCHA và khôi phục bảo mật.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -56,8 +56,7 @@ final class AMP_Integrations_Module {
         
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
-        // [THỬ GỠ LỖI]
-        // Tạm thời CHỈ KIỂM TRA 'success', bỏ qua 'score' và 'action'
+        // Kiểm tra 'success'
         return isset($body['success']) && $body['success'] === true;
     }
 
@@ -130,9 +129,11 @@ final class AMP_Integrations_Module {
         header("access-control-expose-headers: AMP-Access-Control-Allow-Source-Origin, AMP-Redirect-To");
         
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
+
+        // [KHÔI PHỤC LẠI] Bật lại reCAPTCHA
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!function_exists('tuancele_verify_recaptcha_token') || !tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'contact_form')) {
+            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'contact_form')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }
@@ -179,9 +180,11 @@ final class AMP_Integrations_Module {
         header("access-control-expose-headers: AMP-Access-Control-Allow-Source-Origin, AMP-Redirect-To");
 
         $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : '';
+
+        // [KHÔI PHỤC LẠI] Bật lại reCAPTCHA
         if ( !empty($this->get_recaptcha_secret_key()) ) {
             $recaptcha_token = sanitize_text_field($_POST['g-recaptcha-response'] ?? '');
-            if (!function_exists('tuancele_verify_recaptcha_token') || !tuancele_verify_recaptcha_token($recaptcha_token, $user_ip, 'phone_submit')) {
+            if (!$this->verify_recaptcha_token($recaptcha_token, $user_ip, 'phone_submit')) {
                  wp_send_json_error(['message' => 'Xác minh CAPTCHA thất bại. Vui lòng làm lại.'], 400);
             }
         }
@@ -208,7 +211,6 @@ final class AMP_Integrations_Module {
             'name' => 'Khách đăng ký SĐT'
         ];
         
-        // [SỬA LỖI] Xóa ký tự 'D' bị lỗi
         set_transient('thankyou_token_' . $token, $tracking_data, 5 * MINUTE_IN_SECONDS);
         
         $redirect_url = add_query_arg('token', $token, home_url('/cam-on/'));

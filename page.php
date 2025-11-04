@@ -8,6 +8,7 @@
  * - Thêm thanh tiến trình TOC giống như single.php.
  * - Thêm id="post-content-article" vào thẻ <article>.
  * - Thêm <amp-animation> và <amp-position-observer> vào cuối tệp.
+ * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
  */
 get_header();
 ?>
@@ -46,8 +47,11 @@ endif;
 /**
  * =========================================================================
  * [THÊM MỚI V7.1] LOGIC CHO THANH TIẾN TRÌNH ĐỌC (TÍCH HỢP VÀO TOC)
+ * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
  * =========================================================================
  */
+// Chỉ in các script này nếu Mục lục (TOC) đã được tạo
+if ( ! empty( $GLOBALS['has_toc'] ) && $GLOBALS['has_toc'] === true ) : 
 ?>
 <amp-animation id="readingProgressAnimation" layout="nodisplay">
     <script type="application/json">
@@ -72,5 +76,8 @@ endif;
     layout="nodisplay"
     target="post-content-article">
 </amp-position-observer>
+<?php 
+endif; // Kết thúc kiểm tra $GLOBALS['has_toc']
 
-<?php get_footer(); ?>
+get_footer(); 
+?>

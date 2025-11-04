@@ -540,7 +540,7 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [amp_event_bar]
-     *
+     * [ĐÃ SỬA LỖI] Loại bỏ logic AMP.setState và [hidden] để khắc phục lỗi "low trust".
      */
     public function amp_event_bar($atts) {
         $args = ['post_type' => 'event', 'post_status' => 'publish', 'posts_per_page' => -1];
@@ -550,11 +550,9 @@ final class AMP_Shortcodes_Module {
         $schema_items = [];
         ob_start();
         ?>
-        <amp-state id="currentEventSlide"><script type="application/json">0</script></amp-state>
         <div id="amp-event-bar" class="event-carousel-wrapper">
-            <amp-carousel id="eventCarousel" layout="fill" type="slides" autoplay delay="5000" loop on="slideChange:AMP.setState({ currentEventSlide: event.index })">
+            <amp-carousel id="eventCarousel" layout="fill" type="slides" autoplay delay="5000" loop>
                 <?php 
-                $slide_index = 0;
                 while ($event_query->have_posts()) : $event_query->the_post(); 
                     $post_id = get_the_ID();
                     $meta = get_post_meta($post_id);
@@ -563,7 +561,7 @@ final class AMP_Shortcodes_Module {
                     $description = $meta['_event_description'][0] ?? '';
                     $icon = $meta['_event_icon'][0] ?? '🚀';
                     
-                    // --- Schema Data Logic ---
+                    // --- Schema Data Logic (Không thay đổi) ---
                     $event_schema = ['@type' => 'Event', 'name' => $event_title];
                     if (!empty($meta['_event_start_date'][0])) { try { $dt_start = new DateTime($meta['_event_start_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['startDate'] = $dt_start->format(DateTime::ATOM); } catch (Exception $e) {} }
                     if (!empty($meta['_event_end_date'][0])) { try { $dt_end = new DateTime($meta['_event_end_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['endDate'] = $dt_end->format(DateTime::ATOM); } catch (Exception $e) {} }
@@ -581,17 +579,13 @@ final class AMP_Shortcodes_Module {
                     // --- End Schema Data Logic ---
                 ?>
                     <div class="event-slide">
-                        <div role="link" tabindex="0" class="event-notification-link" on="tap:AMP.navigateTo(url='<?php echo esc_url($event_url); ?>')" [hidden]="currentEventSlide != <?php echo $slide_index; ?>" <?php if ($slide_index !== 0) echo 'hidden'; ?>>
+                        <?php // [ĐÃ SỬA] Chỉ giữ lại 1 phiên bản duy nhất, loại bỏ [hidden] và amp.setState ?>
+                        <div role="link" tabindex="0" class="event-notification-link" on="tap:AMP.navigateTo(url='<?php echo esc_url($event_url); ?>')">
                             <div class="sonar-icon-wrap"><span class="event-status-icon"><?php echo esc_html($icon); ?></span><span class="sonar-pulse"></span></div>
                             <p class="event-description-text"><strong><?php echo esc_html($event_title); ?>:</strong> <?php echo esc_html($description); ?></p>
                         </div>
-                        <span class="event-notification-link" [hidden]="currentEventSlide == <?php echo $slide_index; ?>" <?php if ($slide_index === 0) echo 'hidden'; ?>>
-                            <div class="sonar-icon-wrap"><span class="event-status-icon"><?php echo esc_html($icon); ?></span><span class="sonar-pulse"></span></div>
-                            <p class="event-description-text"><strong><?php echo esc_html($event_title); ?>:</strong> <?php echo esc_html($description); ?></p>
-                        </span>
                     </div>
                 <?php 
-                    $slide_index++;
                 endwhile; 
                 wp_reset_postdata();
                 ?>
@@ -606,5 +600,4 @@ final class AMP_Shortcodes_Module {
         }
         return ob_get_clean() . $schema_output;
     }
-
 } // Kết thúc Class

@@ -4,7 +4,8 @@
  *
  * Chứa các hàm lọc (filter) để tự động sửa đổi hoặc chèn nội dung
  * vào (ví dụ: qua hook 'the_content').
- * Tệp này là một phần của quá trình tái cấu trúc từ template-helpers.php.
+ * [FIX LỖI ANIMATION]: Đặt biến $GLOBALS['has_toc'] để ngăn lỗi animation
+ * khi trang không có mục lục.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -40,7 +41,6 @@ function tuancele_append_auto_rating_box( $content ) {
         </div>
         <script type="application/ld+json">{"@context":"https://schema.org/","@type":"Product","name":"<?php echo esc_js(get_the_title($post_id)); ?>","aggregateRating":{"@type":"AggregateRating","ratingValue":"<?php echo esc_js($rating_value); ?>","ratingCount":"<?php echo esc_js($rating_count); ?>","bestRating":"5","worstRating":"1"}}</script>
         <?php
-        // [SỬA LỖI] Di chuyển return ra ngoài để đảm bảo hàm luôn trả về giá trị
         $rating_html = ob_get_clean();
         return $content . $rating_html;
     }
@@ -52,9 +52,18 @@ add_filter( 'the_content', 'tuancele_append_auto_rating_box' );
  * Xử lý, tạo và chèn Mục lục (TOC) vào nội dung.
  */
 function tuancele_stable_toc_handler($content) {
-    if (!is_single() || is_admin() || !in_the_loop() || !is_main_query()) return $content;
+    // [ĐÃ SỬA] Khởi tạo biến global, mặc định là false
+    $GLOBALS['has_toc'] = false; 
+
+    if (!is_singular() || is_admin() || !in_the_loop() || !is_main_query()) return $content;
     preg_match_all('/<h([2-3])(.*?)>(.*?)<\/h\1>/i', $content, $matches, PREG_SET_ORDER);
+
+    // Nếu không đủ heading (ít hơn 2), không tạo TOC và trả về nội dung gốc
     if (count($matches) < 2) return $content;
+
+    // [ĐÃ SỬA] Đặt biến global là TRUE vì TOC chắc chắn sẽ được tạo
+    $GLOBALS['has_toc'] = true; 
+
     $toc_items = []; $new_content = $content;
     foreach ($matches as $match) {
         $level = $match[1]; $text = strip_tags($match[3]); $id = sanitize_title($text); $temp_id = $id; $counter = 2;
@@ -72,6 +81,7 @@ add_filter('the_content', 'tuancele_stable_toc_handler', 25);
 
 /**
  * Hàm trợ giúp, xây dựng HTML cho Mục lục (TOC).
+ * (Hàm này không thay đổi)
  */
 function tuancele_build_stable_toc_html($items) {
     ob_start(); ?>
