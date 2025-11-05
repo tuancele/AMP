@@ -12,6 +12,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class AMP_Admin_Settings_Module {
 
     /**
+     * [SỬA LỖI] Hàm sanitize tùy chỉnh cho Cài đặt SMTP
+     *
+     * Hàm này cho phép lưu trường Mật khẩu (smtp_pass)
+     * mà không bị WordPress xóa các ký tự đặc biệt (ví dụ: Secret Key của SES).
+     *
+     * @param array $input Dữ liệu thô từ form.
+     * @return array Dữ liệu đã được làm sạch.
+     */
+    public function sanitize_smtp_settings( $input ) {
+        $new_input = [];
+        if ( ! is_array( $input ) ) {
+            return $new_input;
+        }
+
+        // Lặp qua từng trường được gửi lên
+        foreach ( $input as $key => $value ) {
+            
+            if ( $key === 'smtp_pass' ) {
+                // --- TRƯỜNG HỢP ĐẶC BIỆT: MẬT KHẨU ---
+                // Chỉ trim khoảng trắng, KHÔNG sanitize
+                // để giữ lại các ký tự đặc biệt của Secret Key
+                $new_input[ $key ] = trim( $value );
+            
+            } elseif ( in_array( $key, ['notification_email', 'smtp_from_email'] ) ) {
+                // Làm sạch các trường email
+                $new_input[ $key ] = sanitize_email( $value );
+
+            } else {
+                // Làm sạch tất cả các trường còn lại (như host, port, user...)
+                $new_input[ $key ] = sanitize_text_field( $value );
+            }
+        }
+        
+        return $new_input;
+    }
+
+    /**
      * Khởi tạo module, đăng ký các hook cho khu vực admin.
      */
     public function __construct() {
@@ -410,9 +447,65 @@ final class AMP_Admin_Settings_Module {
         add_settings_section('tuancele_schema_social_section', 'Mạng xã hội', null, 'tuancele-amp-schema');
         add_settings_field('sameAs', 'Các trang MXH', [ $this, 'schema_field_callback' ], 'tuancele-amp-schema', 'tuancele_schema_social_section', ['id' => 'sameAs']);
 
-        register_setting('tuancele_amp_smtp_group', 'tuancele_smtp_settings');
+        register_setting(
+            'tuancele_amp_smtp_group', 
+            'tuancele_smtp_settings',
+            [ $this, 'sanitize_smtp_settings' ] // <-- THÊM DÒNG NÀY
+        );
         add_settings_section('tuancele_smtp_settings_section', 'Cấu hình gửi Mail (SMTP)', [ $this, 'smtp_section_callback' ], 'tuancele-amp-smtp');
-        $smtp_fields = ['notification_email' => ['label' => 'Email nhận thông báo', 'type' => 'email'], 'enable_smtp' => ['label' => 'Kích hoạt SMTP', 'type' => 'checkbox'], 'smtp_user' => ['label' => 'Tài khoản SMTP'], 'smtp_pass' => ['label' => 'Mật khẩu SMTP', 'type' => 'password'], 'smtp_host' => ['label' => 'Máy chủ SMTP', 'default' => 'smtp.gmail.com'], 'smtp_port' => ['label' => 'Cổng SMTP', 'type' => 'number', 'default' => '587'], 'smtp_secure' => ['label' => 'Mã hóa', 'type' => 'select', 'options' => ['' => 'None', 'tls' => 'TLS', 'ssl' => 'SSL']]];
+        $smtp_fields = [
+            'notification_email' => [
+                'label' => 'Email nhận thông báo', 
+                'type' => 'email',
+                'desc' => 'Email của admin để nhận thông báo khi khách đăng ký.'
+            ], 
+            'enable_smtp' => [
+                'label' => 'Kích hoạt SMTP', 
+                'type' => 'checkbox'
+            ],
+            
+            // --- BẮT ĐẦU THAY ĐỔI ---
+            'smtp_provider' => [
+                'label' => 'Loại Dịch vụ SMTP', 
+                'type' => 'select', 
+                'options' => [
+                    'default' => 'Gmail / SMTP Thường (Tài khoản là Email)',
+                    'ses'     => 'Amazon SES (Tài khoản là Key)'
+                ],
+                'default' => 'default'
+            ],
+            'smtp_from_email' => [
+                'label' => 'Email gửi (From)', 
+                'type' => 'email', 
+                'desc' => 'Bắt buộc với SES. Phải là email đã xác thực (Verified Identity).'
+                // Trường này sẽ được JS ẩn/hiện
+            ],
+            // --- KẾT THÚC THAY ĐỔI ---
+
+            'smtp_user' => [
+                'label' => 'Tài khoản SMTP',
+                'desc' => 'Ví dụ: (Gmail: <code>example@gmail.com</code>) hoặc (SES: <code>AKIA...</code>)'
+            ], 
+            'smtp_pass' => [
+                'label' => 'Mật khẩu SMTP', 
+                'type' => 'password',
+                'desc' => 'Ví dụ: (Gmail: <code>Mật khẩu ứng dụng</code>) hoặc (SES: <code>Mật khẩu SMTP</code>)'
+            ], 
+            'smtp_host' => [
+                'label' => 'Máy chủ SMTP', 
+                'default' => 'smtp.gmail.com'
+            ], 
+            'smtp_port' => [
+                'label' => 'Cổng SMTP', 
+                'type' => 'number', 
+                'default' => '587'
+            ], 
+            'smtp_secure' => [
+                'label' => 'Mã hóa', 
+                'type' => 'select', 
+                'options' => ['' => 'None', 'tls' => 'TLS', 'ssl' => 'SSL']
+            ]
+        ];
         foreach ($smtp_fields as $id => $field) add_settings_field('tuancele_' . $id, $field['label'], [ $this, 'smtp_field_callback' ], 'tuancele-amp-smtp', 'tuancele_smtp_settings_section', array_merge($field, ['id' => $id]));
 
         register_setting('tuancele_amp_r2_group', 'tuancele_r2_settings');
@@ -562,6 +655,10 @@ final class AMP_Admin_Settings_Module {
                 echo '<input type="' . esc_attr($type) . '" id="tuancele_' . esc_attr($id) . '" name="tuancele_smtp_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
                  break;
         }
+        // Thêm dòng này để hiển thị mô tả (desc)
+        if (!empty($args['desc'])) {
+            echo '<p class="description">' . wp_kses_post($args['desc']) . '</p>';
+        }
     }
     public function r2_section_callback() {
         echo '<p>Điền các thông tin dưới đây để kết nối website của bạn với dịch vụ lưu trữ Cloudflare R2.</p>';
@@ -665,17 +762,57 @@ final class AMP_Admin_Settings_Module {
             // Nó tự động tìm checkbox có name chứa "[enable_]" và ẩn tất cả các hàng <tr> phía sau
             $script_toggle = "
             jQuery(document).ready(function($) {
-                // [ĐÃ SỬA] Tìm checkbox enable cụ thể trong ngữ cảnh trang
+                'use strict';
+                
                 var mainCheckbox = null;
                 
+                // --- LOGIC CHO TRANG SMTP ---
                 if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-smtp') ) {
-                    mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_smtp]\"]');
+                    
+                    var enableSmtpCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_smtp]\"]');
+                    
+                    if (enableSmtpCheckbox.length > 0) {
+                        const dependentFields = enableSmtpCheckbox.closest('tr').nextAll();
+                        var providerDropdown = $('select[name*=\"[smtp_provider]\"]');
+                        var fromEmailRow = $('#tuancele_smtp_from_email').closest('tr'); // Tìm <tr> của trường 'Email gửi (From)'
+                        
+                        // Hàm 2: Ẩn/hiện trường 'Email gửi (From)' dựa trên Provider
+                        function toggleProviderFields() {
+                            if (providerDropdown.val() === 'ses') {
+                                fromEmailRow.show();
+                            } else { // 'default' (Gmail/Khác)
+                                fromEmailRow.hide();
+                            }
+                        }
+                        
+                        // Hàm 1: Bật/tắt toàn bộ module SMTP
+                        function toggleAllSmtpFields() {
+                            if (enableSmtpCheckbox.is(':checked')) {
+                                dependentFields.show();
+                                toggleProviderFields(); // Chạy logic phụ
+                            } else {
+                                dependentFields.hide();
+                            }
+                        }
+                        
+                        // Chạy cả 2 hàm khi tải trang
+                        toggleAllSmtpFields(); 
+                        
+                        // Gán sự kiện 'change'
+                        enableSmtpCheckbox.on('change', toggleAllSmtpFields);
+                        providerDropdown.on('change', toggleProviderFields);
+                    }
+
+                // --- LOGIC CHO TRANG R2 (Giữ nguyên) ---
                 } else if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-r2') ) {
                     mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_r2]\"]');
+                
+                // --- LOGIC CHO TRANG RECAPTCHA (Giữ nguyên) ---
                 } else if ( $('body').hasClass('cai-dat-amp_page_tuancele-amp-recaptcha') ) {
                     mainCheckbox = $('input[type=\"checkbox\"][name*=\"[enable_recaptcha]\"]');
                 }
 
+                // Logic cũ cho R2 và reCAPTCHA (Không ảnh hưởng)
                 if (mainCheckbox && mainCheckbox.length > 0) {
                     const dependentFields = mainCheckbox.closest('tr').nextAll();
                     function toggleFields() {

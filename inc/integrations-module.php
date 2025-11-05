@@ -254,10 +254,41 @@ final class AMP_Integrations_Module {
         } catch (\PHPMailer\PHPMailer\Exception $e) { update_option('tuancele_smtp_connection_status', ['success' => false, 'message' => 'Kết nối thất bại: ' . $mail->ErrorInfo]); }
     }
     
-    public function configure_smtp( $phpmailer ) {
+public function configure_smtp( $phpmailer ) {
         $options = get_option('tuancele_smtp_settings', []);
-        if (!isset($options['enable_smtp']) || $options['enable_smtp'] !== 'on' || empty($options['smtp_user'])) return;
-        $phpmailer->isSMTP(); $phpmailer->Host = $options['smtp_host']; $phpmailer->SMTPAuth = true; $phpmailer->Port = $options['smtp_port']; $phpmailer->Username = $options['smtp_user']; $phpmailer->Password = $options['smtp_pass']; $phpmailer->SMTPSecure = $options['smtp_secure']; $phpmailer->From = $options['smtp_user']; $phpmailer->FromName = get_bloginfo('name');
+        
+        // 1. Kiểm tra kích hoạt
+        if (!isset($options['enable_smtp']) || $options['enable_smtp'] !== 'on' || empty($options['smtp_user'])) {
+            return;
+        }
+
+        // 2. Cấu hình kết nối (Chung cho cả hai)
+        $phpmailer->isSMTP(); 
+        $phpmailer->Host = $options['smtp_host']; 
+        $phpmailer->SMTPAuth = true; 
+        $phpmailer->Port = $options['smtp_port']; 
+        $phpmailer->SMTPSecure = $options['smtp_secure']; 
+
+        // 3. Cấu hình xác thực (Chung cho cả hai)
+        $phpmailer->Username = $options['smtp_user']; // Luôn là Tài khoản SMTP (Gmail email hoặc SES key)
+        $phpmailer->Password = $options['smtp_pass']; // Luôn là Mật khẩu SMTP
+
+        // 4. [LOGIC MỚI] Cấu hình địa chỉ "From" (Người gửi)
+        // Lấy provider, mặc định là 'default' (Gmail)
+        $provider = $options['smtp_provider'] ?? 'default';
+
+        if ( $provider === 'ses' && ! empty( $options['smtp_from_email'] ) ) {
+            // --- Trường hợp AMAZON SES ---
+            // "From" PHẢI là email đã xác thực (từ trường 'Email gửi (From)')
+            $phpmailer->From = $options['smtp_from_email'];
+
+        } else {
+            // --- Trường hợp GMAIL / DEFAULT ---
+            // "From" chính là "Tài khoản SMTP" (vì username của Gmail là email)
+            $phpmailer->From = $options['smtp_user'];
+        }
+        
+        $phpmailer->FromName = get_bloginfo('name');
     }
 
 } // Kết thúc Class
