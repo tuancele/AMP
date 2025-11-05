@@ -12,6 +12,7 @@
  * bây giờ sẽ luôn được parse chính xác.
  *
  * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
+ * [TỐI ƯU IMAGEMAP V6]: Sửa HTML để hiển thị tiêu đề hotspot cố định.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -233,50 +234,55 @@ final class AMP_Shortcodes_Module {
         return ob_get_clean();
     }
 
-/**
+    /**
      * SHORTCODE [tinh_lai_suat]
-     * [FIX V31] - Cấu trúc AMP Script chuẩn.
-     * 1. <amp-script layout="container"> chứa HTML (Form, Result).
-     * 2. <script type="text/plain"> chứa JS, nằm BÊN NGOÀI <amp-script>.
-     * 3. Tất cả ID đều phải là duy nhất (dùng uniqid).
+     * [FIX V32] - Giải pháp cuối cùng (Chuẩn AMP).
+     * 1. Bỏ uniqid() để giữ nội dung script TĨNH (để hash không đổi).
+     * 2. Dùng ID tĩnh cho <script> ("calc_mortgage").
+     * 3. Dùng ID tĩnh cho các input ("loanAmount", "loanTerm"...).
+     * 4. Dùng JS tương đối (closest/querySelector) để các shortcode
+     * không xung đột nhau.
      */
     public function tinh_lai_suat() {
-        // [SỬA LỖI] Tạo ID duy nhất cho mỗi lần gọi shortcode
-        $script_id = 'calc_' . uniqid(); 
+        // [FIX V32] Dùng ID tĩnh.
+        $static_script_id = 'calc_mortgage'; 
         ob_start(); ?>
         
         <div class="mortgage-calculator">
             <h3 class="calculator-title">Ước tính khoản vay mua nhà</h3>
             
-            <?php // --- BẮT ĐẦU CẤU TRÚC V31 --- ?>
+            <?php // --- CẤU TRÚC V32 (ĐÃ CHUẨN) --- ?>
             
-            <amp-script script="<?php echo esc_attr($script_id); ?>" layout="container">
+            <amp-script script="<?php echo esc_attr($static_script_id); ?>" layout="container">
                 
                 <form method="GET" action="#" target="_top">
-                    <div class="form-row"><label for="loanAmount-<?php echo esc_attr($script_id); ?>">Số tiền vay (triệu VNĐ)</label><input type="number" id="loanAmount-<?php echo esc_attr($script_id); ?>" placeholder="Ví dụ: 800" required></div>
-                    <div class="form-row"><label for="loanTerm-<?php echo esc_attr($script_id); ?>">Thời hạn vay (năm)</label><input type="number" id="loanTerm-<?php echo esc_attr($script_id); ?>" value="20" required></div>
-                    <div class="form-row"><label for="interestRate-<?php echo esc_attr($script_id); ?>">Lãi suất (%/năm)</label><input type="number" step="0.1" id="interestRate-<?php echo esc_attr($script_id); ?>" value="7.5" required></div>
+                    <div class="form-row"><label for="loanAmount">Số tiền vay (triệu VNĐ)</label><input type="number" id="loanAmount" placeholder="Ví dụ: 800" required></div>
+                    <div class="form-row"><label for="loanTerm">Thời hạn vay (năm)</label><input type="number" id="loanTerm" value="20" required></div>
+                    <div class="form-row"><label for="interestRate">Lãi suất (%/năm)</label><input type="number" step="0.1" id="interestRate" value="7.5" required></div>
                 </form>
 
                 <div class="calculator-result">
                     <h4>Số tiền trả hàng tháng (ước tính):</h4>
-                    <div class="monthly-payment"><span id="result-display-<?php echo esc_attr($script_id); ?>">0 ₫</span></div>
+                    <div class="monthly-payment"><span id="result-display">0 ₫</span></div>
                 </div>
 
             </amp-script>
 
-            <script id="<?php echo esc_attr($script_id); ?>" type="text/plain" target="amp-script">
-                // Code JS nằm ở đây sẽ chạy bên ngoài sandbox và
-                // có thể truy cập document.getElementById
+            <script id="<?php echo esc_attr($static_script_id); ?>" type="text/plain" target="amp-script">
                 
-                const loanAmountInput=document.getElementById("loanAmount-<?php echo esc_attr($script_id); ?>");
-                const loanTermInput=document.getElementById("loanTerm-<?php echo esc_attr($script_id); ?>");
-                const interestRateInput=document.getElementById("interestRate-<?php echo esc_attr($script_id); ?>");
-                const resultDisplay=document.getElementById("result-display-<?php echo esc_attr($script_id); ?>");
+                // [FIX V32] Dùng JavaScript tương đối (relative)
                 
-                // Tìm .mortgage-calculator cha gần nhất
-                // (Phải tìm từ thẻ script, vì nó là element duy nhất JS biết)
-                const calculatorDiv=document.getElementById("<?php echo esc_attr($script_id); ?>").closest('.mortgage-calculator');
+                // 'this' trong amp-script là thẻ <amp-script>
+                const ampScriptTag = this; 
+                
+                // 1. Tìm .mortgage-calculator cha gần nhất
+                const calculatorDiv = ampScriptTag.closest('.mortgage-calculator');
+
+                // 2. Tìm các input BÊN TRONG div cha đó
+                const loanAmountInput = calculatorDiv.querySelector("#loanAmount");
+                const loanTermInput = calculatorDiv.querySelector("#loanTerm");
+                const interestRateInput = calculatorDiv.querySelector("#interestRate");
+                const resultDisplay = calculatorDiv.querySelector("#result-display");
 
                 function calculateAndDisplay(){
                     const t=parseFloat(loanAmountInput.value)*1e6||0,e=parseFloat(interestRateInput.value)/1200||0,n=parseInt(loanTermInput.value)*12||0;
@@ -294,12 +300,13 @@ final class AMP_Shortcodes_Module {
                 interestRateInput.addEventListener("input",calculateAndDisplay);
             </script>
             
-            <?php // --- KẾT THÚC CẤU TRÚC V31 --- ?>
+            <?php // --- KẾT THÚC CẤU TRÚC V32 --- ?>
 
         </div>
         
         <?php return ob_get_clean();
     }
+
 
     /**
      * SHORTCODE [bds_noibat]
@@ -336,7 +343,7 @@ final class AMP_Shortcodes_Module {
         $curly_quotes = ['“', '”', '‘', '’'];
         $straight_quotes = ['"', '"', "'", "'"];
         $content = str_replace( $curly_quotes, $straight_quotes, $content );
-
+        
         $content = str_replace( ['<p>', '</p>', '<br />', '<br>'], '', $content );
         $output = do_shortcode($content);
         return '<div class="utilities-accordion-container"><div class="utilities-scroller"><amp-accordion>' . $output . '</amp-accordion></div></div>';
@@ -505,7 +512,7 @@ final class AMP_Shortcodes_Module {
 
     /**
      * SHORTCODE [amp_imagemap]
-     *
+     * [TỐI ƯU V6] Sửa HTML để hiển thị tiêu đề hotspot cố định.
      */
     public function amp_imagemap($atts) {
         $atts = shortcode_atts(['id' => 0], $atts);
@@ -551,6 +558,8 @@ final class AMP_Shortcodes_Module {
         ?>
         <div class="amp-css-imagemap-wrapper" data-map-id="<?php echo $map_id; ?>" style="position: relative;">
             <amp-img src="<?php echo $image_url; ?>" width="<?php echo $width; ?>" height="<?php echo $height; ?>" layout="responsive" alt="<?php echo esc_attr($alt); ?>"></amp-img>
+            
+            <?php // --- BẮT ĐẦU SỬA LỖI V6 --- ?>
             <?php foreach ($hotspot_data as $data) : 
                 $number = esc_html($data['number']);
                 $safe_unit_id = sanitize_title($data['name']);
@@ -567,10 +576,18 @@ final class AMP_Shortcodes_Module {
                     $extra_attrs = 'href="' . esc_url($data['url']) . '"';
                 }
             ?>
-                <<?php echo $tag; ?> <?php echo $extra_attrs; ?> class="css-hotspot hotspot-on-image" id="hotspot-image-<?php echo esc_attr($safe_unit_id); ?>" style="position: absolute; left: <?php echo $data['left']; ?>%; top: <?php echo $data['top']; ?>%; width: <?php echo esc_attr($hotspot_size); ?>; height: <?php echo esc_attr($hotspot_size); ?>;" title="<?php echo esc_attr($data['name']); ?>">
-                   <?php echo $number; ?>
-                </<?php echo $tag; ?>>
+                
+                <div class="css-hotspot-wrapper" style="position: absolute; left: <?php echo $data['left']; ?>%; top: <?php echo $data['top']; ?>%; transform: translate(-50%, -50%);">
+                    
+                    <<?php echo $tag; ?> <?php echo $extra_attrs; ?> class="css-hotspot hotspot-on-image" id="hotspot-image-<?php echo esc_attr($safe_unit_id); ?>" style="width: <?php echo esc_attr($hotspot_size); ?>; height: <?php echo esc_attr($hotspot_size); ?>;" title="<?php echo esc_attr($data['name']); // Giữ title cho accessibility ?>">
+                       <?php echo $number; ?>
+                    </<?php echo $tag; ?>>
+                    
+                    <span class="hotspot-title-display"><?php echo esc_html($data['name']); ?></span>
+                </div>
+
             <?php endforeach; ?>
+            <?php // --- KẾT THÚC SỬA LỖI V6 --- ?>
         </div>
         
         <div class="amp-css-hotspot-list-wrapper">

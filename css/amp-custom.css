@@ -2217,88 +2217,7 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
 .floating-form-button {
     bottom: 159px; /* 84px (vị trí nút gọi) + 60px (chiều cao nút gọi) + 15px (khoảng cách) */
 }
-/* =========================================================================
-   IMAGE MAP & HOTSPOT STYLES (v5 - Number Display & Centered Sonar)
-   ========================================================================= */
 
-@keyframes sonar-wave {
-    0% { transform: scale(0.7); opacity: 0.8; }
-    100% { transform: scale(3); opacity: 0; }
-}
-
-.amp-css-imagemap-wrapper {
-    position: relative;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.06);
-}
-
-.hotspot-on-image {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    z-index: 2;
-    background-color: var(--mau-chinh);
-    cursor: pointer;
-    border: none;
-    border-radius: 50%;
-    box-sizing: border-box;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-    transform: translate(-50%, -50%); 
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.hotspot-on-image:hover {
-    transform: translate(-50%, -50%) scale(1.2);
-    z-index: 3;
-}
-
-.hotspot-on-image::before,
-.hotspot-on-image::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background-color: var(--mau-chinh);
-    z-index: -1;
-    animation: sonar-wave 2.2s infinite ease-out;
-}
-
-.hotspot-on-image::after {
-    animation-delay: -1.1s;
-}
-
-/* Hotspot List and Lightbox */
-.amp-css-hotspot-list-wrapper { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; }
-.amp-css-hotspot-list-wrapper .hotspot-list-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; font-weight: 700; color: var(--mau-chu); text-align: center; }
-.hotspot-list-ui { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-.hotspot-list-button { display: block; width: 100%; padding: 8px 18px; background-color: #f8f9fa; color: var(--mau-chu); border: 1px solid #dee2e6; border-radius: 50px; text-decoration: none; font-weight: 600; cursor: pointer; font-size: 0.9rem; text-align: center; box-sizing: border-box; transition: all 0.2s ease-in-out; }
-.hotspot-list-button:hover { background-color: var(--mau-chu); color: #ffffff; border-color: var(--mau-chu); transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0, 86, 179, 0.2); }
-.amp-lightbox-map .lightbox-content-wrapper { background: rgba(23, 33, 43, 0.85); backdrop-filter: blur(4px); width: 100%; height: 100%; position: fixed; top: 0; left: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
-.amp-lightbox-map .lightbox-content { background: #ffffff; padding: 30px 35px; border-radius: 12px; width: 600px; max-width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); border-top: 4px solid var(--mau-chinh); }
-.amp-lightbox-map .lightbox-content h3 { margin-top: 0; margin-bottom: 15px; color: var(--mau-chu); font-size: 1.8rem; font-family: 'Poppins', sans-serif; }
-.amp-lightbox-map .lightbox-content div[html-bind] { line-height: 1.8; color: #333; font-size: 1rem; }
-.amp-lightbox-map .lightbox-content div[html-bind] p:last-child { margin-bottom: 0; }
-.amp-lightbox-map .lightbox-buttons { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 12px; }
-.amp-lightbox-map .lightbox-cta-button, .amp-lightbox-map .lightbox-close-button { padding: 10px 25px; border: none; border-radius: 50px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.amp-lightbox-map .lightbox-cta-button { background-color: var(--mau-chinh); color: #ffffff; text-decoration: none ; box-shadow: 0 4px 15px rgba(0, 115, 230, 0.2); }
-.amp-lightbox-map .lightbox-cta-button:hover { transform: translateY(-3px); box-shadow: 0 7px 20px rgba(0, 115, 230, 0.35); }
-.amp-lightbox-map .lightbox-close-button { background-color: #f1f3f5; color: #495057; }
-.amp-lightbox-map .lightbox-close-button:hover { background-color: #e9ecef; }
-@media (max-width: 600px) { .amp-css-hotspot-list-wrapper { margin-top: 20px; padding-top: 15px; } .hotspot-list-button { padding: 8px 16px; font-size: 0.85rem; } .amp-lightbox-map .lightbox-content { padding: 25px 20px; max-width: calc(100vw - 30px); max-height: calc(100vh - 30px); } .amp-lightbox-map .lightbox-content h3 { font-size: 1.5rem; } .amp-lightbox-map .lightbox-buttons { flex-direction: column-reverse; } .amp-lightbox-map .lightbox-cta-button, .amp-lightbox-map .lightbox-close-button { width: 100%; text-align: center; } }
-/* =========================================================================
-   END IMAGE MAP & HOTSPOT
-   ========================================================================= */
 /* ======================================= */
 /* TỐI ƯU PWA INSTALL FLOATING BAR */
 /* ======================================= */
@@ -2770,3 +2689,126 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
         grid-template-columns: 1fr 1fr; /* 2 cột */
     }
 }
+
+/* [MỚI V10] Tiêu đề luôn hiển thị (Style theo yêu cầu) */
+.hotspot-title-display {
+    display: none; /* [FIX V10] Ẩn hoàn toàn trên mobile để không làm lệch */
+    margin-top: 8px; 
+    padding: 4px 10px;
+    background-color: #ffffff; 
+    color: #222; 
+    font-size: 8px;
+    font-weight: 700; 
+    border-radius: 15px; 
+    white-space: nowrap;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+    border: 1px solid #ddd;
+    
+    /* [FIX V9] Mặc định ẩn trên Mobile */
+    opacity: 0;
+    transform: translateY(-5px); 
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none; 
+}
+
+/* * Khi hover vào wrapper (trên Desktop),
+ * làm tiêu đề hiện ra rõ hơn (nếu nó đang hiển thị).
+*/
+.css-hotspot-wrapper:hover .hotspot-title-display {
+     opacity: 1;
+     transform: translateY(0);
+}
+
+/* * [FIX V10] Media Query cho Desktop (từ 600px trở lên)
+ * BẮT BUỘC hiển thị tiêu đề hotspot.
+*/
+@media (min-width: 600px) {
+    .hotspot-title-display {
+        display: block; /* [FIX V10] Hiển thị lại trên desktop */
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto; /* Cho phép tương tác lại */
+    }
+}
+
+/* Đoạn code cũ (V8) để fix lỗi sonar (VẪN GIỮ NGUYÊN) */
+@keyframes sonar-wave {
+    0% { transform: scale(0.7); opacity: 0.8; }
+    100% { transform: scale(3); opacity: 0; }
+}
+.amp-css-imagemap-wrapper {
+    position: relative;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.06);
+}
+.css-hotspot-wrapper {
+    position: absolute; 
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.css-hotspot-wrapper:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+    z-index: 3;
+}
+.hotspot-on-image {
+    position: relative; /* Fix lỗi Sonar (V8) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    z-index: 2; 
+    background-color: var(--mau-chinh);
+    cursor: pointer;
+    border: none;
+    border-radius: 50%;
+    box-sizing: border-box;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+}
+.hotspot-on-image::before,
+.hotspot-on-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: var(--mau-chinh);
+    z-index: -1;
+    animation: sonar-wave 2.2s infinite ease-out;
+}
+.hotspot-on-image::after {
+    animation-delay: -1.1s;
+}
+
+/* --- CSS Cũ của List & Lightbox (Giữ nguyên) --- */
+.amp-css-hotspot-list-wrapper { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; }
+.amp-css-hotspot-list-wrapper .hotspot-list-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; font-weight: 700; color: var(--mau-chu); text-align: center; }
+.hotspot-list-ui { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.hotspot-list-button { display: block; width: 100%; padding: 8px 18px; background-color: #f8f9fa; color: var(--mau-chu); border: 1px solid #dee2e6; border-radius: 50px; text-decoration: none; font-weight: 600; cursor: pointer; font-size: 0.9rem; text-align: center; box-sizing: border-box; transition: all 0.2s ease-in-out; }
+.hotspot-list-button:hover { background-color: var(--mau-chu); color: #ffffff; border-color: var(--mau-chinh); transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0, 86, 179, 0.2); }
+.amp-lightbox-map .lightbox-content-wrapper { background: rgba(23, 33, 43, 0.85); backdrop-filter: blur(4px); width: 100%; height: 100%; position: fixed; top: 0; left: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.amp-lightbox-map .lightbox-content { background: #ffffff; padding: 30px 35px; border-radius: 12px; width: 600px; max-width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); border-top: 4px solid var(--mau-chinh); }
+.amp-lightbox-map .lightbox-content h3 { margin-top: 0; margin-bottom: 15px; color: var(--mau-chu); font-size: 1.8rem; font-family: 'Poppins', sans-serif; }
+.amp-lightbox-map .lightbox-content div[html-bind] { line-height: 1.8; color: #333; font-size: 1rem; }
+.amp-lightbox-map .lightbox-content div[html-bind] p:last-child { margin-bottom: 0; }
+.amp-lightbox-map .lightbox-buttons { margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 12px; }
+.amp-lightbox-map .lightbox-cta-button, .amp-lightbox-map .lightbox-close-button { padding: 10px 25px; border: none; border-radius: 50px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.amp-lightbox-map .lightbox-cta-button { background-color: var(--mau-chinh); color: #ffffff; text-decoration: none ; box-shadow: 0 4px 15px rgba(0, 115, 230, 0.2); }
+.amp-lightbox-map .lightbox-cta-button:hover { transform: translateY(-3px); box-shadow: 0 7px 20px rgba(0, 115, 230, 0.35); }
+.amp-lightbox-map .lightbox-close-button { background-color: #f1f3f5; color: #495057; }
+.amp-lightbox-map .lightbox-close-button:hover { background-color: #e9ecef; }
+@media (max-width: 600px) { .amp-css-hotspot-list-wrapper { margin-top: 20px; padding-top: 15px; } .hotspot-list-button { padding: 8px 16px; font-size: 0.85rem; } .amp-lightbox-map .lightbox-content { padding: 25px 20px; max-width: calc(100vw - 30px); max-height: calc(100vh - 30px); } .amp-lightbox-map .lightbox-content h3 { font-size: 1.5rem; } .amp-lightbox-map .lightbox-buttons { flex-direction: column-reverse; } .amp-lightbox-map .lightbox-cta-button, .amp-lightbox-map .lightbox-close-button { width: 100%; text-align: center; } }
+/* =========================================================================
+   END IMAGE MAP & HOTSPOT
+   ========================================================================= */

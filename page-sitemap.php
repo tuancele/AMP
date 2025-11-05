@@ -4,9 +4,8 @@
  * Template Name: Sơ đồ Website
  * Description: Hiển thị sơ đồ website trực quan cho người dùng.
  *
- * [FIX V3] - Chuẩn SEO 2025:
- * - Thay đổi link từ <li><a> sang <li><h3><a> để tăng cường ngữ nghĩa.
- * - Thêm thuộc tính 'title' vào thẻ <a>.
+ * [FIX V4] - Thêm 'post_status' => 'publish' cho CPT 'property'
+ * để đảm bảo get_posts() tìm thấy CPT được đăng ký có điều kiện.
  */
 
 get_header();
@@ -29,7 +28,8 @@ $posts = get_posts([
     'post_type' => 'post',
     'posts_per_page' => 50,
     'orderby' => 'date',
-    'order' => 'DESC'
+    'order' => 'DESC',
+    'post_status' => 'publish' // Thêm cho chắc chắn
 ]);
 if (!empty($posts)) {
     $sitemap_groups['Bài viết mới'] = $posts;
@@ -50,7 +50,8 @@ $services = get_posts([
     'post_type' => 'service',
     'posts_per_page' => -1,
     'orderby' => 'title',
-    'order' => 'ASC'
+    'order' => 'ASC',
+    'post_status' => 'publish' // Thêm cho chắc chắn
 ]);
 if (!empty($services)) {
     $sitemap_groups['Dịch vụ'] = $services;
@@ -65,7 +66,8 @@ if ($is_property_enabled) {
         'post_type' => 'property',
         'posts_per_page' => 50,
         'orderby' => 'date',
-        'order' => 'DESC'
+        'order' => 'DESC',
+        'post_status' => 'publish' // <-- [SỬA LỖI V4] Thêm dòng này
     ]);
     if (!empty($properties)) {
         $sitemap_groups['Bất động sản'] = $properties;
@@ -108,7 +110,6 @@ if (function_exists('tuancele_amp_display_breadcrumbs')) {
                             }
                             ?>
                             
-                            <?php // --- BẮT ĐẦU THAY ĐỔI V3 --- ?>
                             <li>
                                 <h3>
                                     <a href="<?php echo esc_url($url); ?>" title="<?php echo esc_attr($name); ?>">
@@ -116,7 +117,6 @@ if (function_exists('tuancele_amp_display_breadcrumbs')) {
                                     </a>
                                 </h3>
                             </li>
-                            <?php // --- KẾT THÚC THAY ĐỔI V3 --- ?>
                             
                         <?php endforeach; ?>
                     </ul>
