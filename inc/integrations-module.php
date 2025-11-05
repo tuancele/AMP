@@ -81,8 +81,26 @@ final class AMP_Integrations_Module {
      * =========================================================================
      */
     public function send_notification_email_async($arg) {
-        $this->send_notification_email($arg);
-    }
+            // [FIX CHỐNG GỬI TRÙNG LẶP]
+            // Tạo một "khóa" (lock key) duy nhất cho nội dung form này
+            // (md5(json_encode($arg)) sẽ tạo ra một chuỗi hash độc nhất)
+            $lock_key = 'lock_email_' . md5(json_encode($arg));
+
+            // 1. Kiểm tra xem "ổ khóa" này đã tồn tại chưa
+            if ( get_transient( $lock_key ) ) {
+                // Nếu khóa tồn tại, có nghĩa là một email y hệt đang được gửi
+                // (hoặc vừa được gửi cách đây 1 phút).
+                // Chúng ta sẽ dừng lại ngay lập tức để tránh gửi trùng lặp.
+                return; 
+            }
+
+            // 2. Nếu "ổ khóa" chưa tồn tại:
+            // Đặt khóa ngay lập tức! (Khóa này tự động hết hạn sau 60 giây)
+            set_transient( $lock_key, 'true', 60 ); 
+            
+            // 3. Tiến hành gửi email (vì chúng ta là người đầu tiên giữ khóa)
+            $this->send_notification_email($arg);
+        }
 
     /**
      * =========================================================================
