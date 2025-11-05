@@ -2681,3 +2681,92 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
     transform: translateY(-5px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
+
+/* --- CSS NÂNG CẤP CHO TRANG SITEMAP (V6 - Tăng Specificity) --- */
+.sitemap-container {
+    margin: 30px 0;
+}
+.sitemap-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+.sitemap-group {
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    padding: 25px 30px;
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+.sitemap-group:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+}
+.sitemap-group-title {
+    font-size: 1.6rem;
+    font-family: 'Poppins', sans-serif;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(90deg, var(--mau-chu), var(--mau-chinh));
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.sitemap-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.sitemap-list::-webkit-scrollbar { width: 6px; }
+.sitemap-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+.sitemap-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+.sitemap-list::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+.sitemap-list li {
+    margin: 0;
+}
+
+/* NÂNG CẤP V6: Thêm '.sitemap-container' để tăng độ "mạnh" (specificity) */
+.sitemap-container .sitemap-list li h3 {
+    margin: 0;
+    font-size: 0.95rem;  /* Kích thước gần giống text thường */
+    font-weight: 400;    /* Độ đậm text thường */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Đảm bảo font giống body */
+    line-height: 1.6;    /* Chiều cao dòng text thường */
+}
+
+/* Áp style vào thẻ <a> bên trong <h3> */
+.sitemap-list li h3 a {
+    display: block;
+    padding: 10px 15px; /* Giảm padding lại 1 chút */
+    text-decoration: none;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s ease-out;
+    transform: translateX(0);
+}
+.sitemap-list li:last-child h3 a {
+    border-bottom: none;
+}
+.sitemap-list li h3 a:hover {
+    background-color: #f0f8ff;
+    color: var(--mau-chu);
+    transform: translateX(8px);
+}
+
+/* Responsive Grid (Giữ nguyên) */
+@media (min-width: 768px) {
+    .sitemap-grid {
+        grid-template-columns: 1fr 1fr; /* 2 cột */
+    }
+}
