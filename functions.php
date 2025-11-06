@@ -44,6 +44,10 @@ require_once $theme_dir . '/inc/amp-core.php'; // (Từ Bước 1)
 // Tải các Module Class
 // require_once $theme_dir . '/inc/admin-settings-loader.php'; // (ĐÃ VÔ HIỆU HÓA TỆP MỚI)
 require_once $theme_dir . '/inc/admin-settings-module.php'; // (ĐÃ KÍCH HOẠT LẠI TỆP CŨ)
+
+// [THÊM MỚI] Tải tệp Hướng dẫn Shortcode đã được tách
+require_once $theme_dir . '/inc/admin-shortcode-guide.php'; 
+
 require_once $theme_dir . '/inc/integrations-module.php'; // (Từ Bước 4)
 require_once $theme_dir . '/inc/comments-module.php';     // (Từ Bước 4)
 require_once $theme_dir . '/inc/seo-module.php';         // (Từ Bước 3)
@@ -254,6 +258,9 @@ function tuancele_init_functional_modules() {
     // [THÊM MỚI] Khởi chạy Module Cài đặt Admin (Từ file cũ)
     if ( is_admin() ) {
         new AMP_Admin_Settings_Module();
+        
+        // [THÊM MỚI] Khởi chạy Module Hướng dẫn Shortcode
+        new AMP_Shortcode_Guide_Module();
     }
 }
 add_action('init', 'tuancele_init_functional_modules');
@@ -304,4 +311,4 @@ add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
 
 // [ĐÃ XÓA DÒNG '}' BỊ THỪA GÂY LỖI]
 // TẠM THỜI: Xóa cache CSS
-//delete_transient('tuancele_amp_css_cache_v2');
+delete_transient('tuancele_amp_css_cache_v2');

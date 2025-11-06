@@ -13,6 +13,7 @@
  *
  * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
  * [TỐI ƯU IMAGEMAP V6]: Sửa HTML để hiển thị tiêu đề hotspot cố định.
+ * [THÊM MỚI]: Thêm shortcode [ab_test_variant]
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -51,6 +52,9 @@ final class AMP_Shortcodes_Module {
         add_shortcode('dang_ky_sdt', [ $this, 'phone_registration' ]);
         add_shortcode('amp_imagemap', [ $this, 'amp_imagemap' ]);
         add_shortcode('amp_event_bar', [ $this, 'amp_event_bar' ]);
+        
+        // --- [THÊM MỚI] ĐĂNG KÝ SHORTCODE A/B TEST ---
+        add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
         
         // Hook tự động chèn quảng cáo nội bộ
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
@@ -696,5 +700,27 @@ final class AMP_Shortcodes_Module {
         }
         return ob_get_clean() . $schema_output;
     }
+
+    /**
+     * [THÊM MỚI] SHORTCODE [ab_test_variant]
+     *
+     */
+    public function ab_test_variant($atts, $content = null) {
+        $atts = shortcode_atts([
+            'experiment' => '', // Tên của thử nghiệm (ví dụ: "form_title_test")
+            'variant'    => '', // Tên của biến thể (ví dụ: "tieu_de_goc")
+        ], $atts, 'ab_test_variant');
+
+        if (empty($atts['experiment']) || empty($atts['variant'])) {
+            return '';
+        }
+
+        // [QUAN TRỌNG] Xử lý các shortcode lồng bên trong (như [form_dang_ky])
+        $processed_content = do_shortcode($content);
+
+        // Trả về thẻ div mà amp-experiment có thể nhận diện
+        return '<div amp-experiment-variant="' . esc_attr($atts['experiment'] . '.' . $atts['variant']) . '">' . $processed_content . '</div>';
+    }
+
 
 } // Kết thúc Class

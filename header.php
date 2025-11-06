@@ -9,6 +9,12 @@
  * - Sử dụng Tuancele_AMP_Sidebar_Walker cho menu di động.
  * - Menu desktop (main-menu) sẽ được xử lý bằng CSS thuần.
  */
+
+// [THÊM MỚI] Lấy cài đặt A/B test 1 lần duy nhất ở đầu tệp
+$ab_test_settings = get_option('tuancele_ab_testing_settings', '');
+// Kiểm tra xem có phải là JSON hợp lệ không (đơn giản)
+$is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_settings), 0, 1 ) === '{' && substr( trim($ab_test_settings), -1 ) === '}' );
+
 ?>
 <!doctype html>
 <html ⚡ lang="<?php bloginfo('language'); ?>">
@@ -32,11 +38,72 @@
     <script async custom-element="amp-geo" src="https://cdn.ampproject.org/v0/amp-geo-0.1.js"></script>
     <script async custom-element="amp-position-observer" src="https://cdn.ampproject.org/v0/amp-position-observer-0.1.js"></script>
     <script async custom-element="amp-animation" src="https://cdn.ampproject.org/v0/amp-animation-0.1.js"></script>
+    <script async custom-element="amp-accordion" src="https://cdn.ampproject.org/v0/amp-accordion-0.1.js"></script>
     <style amp-custom><?php do_action('amp_custom_css'); ?></style>
     <script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>
+    
+    <?php // ?>
+    <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
+    
+    <?php 
+    // if ( $is_ab_test_valid ) {
+        echo '<script async custom-element="amp-experiment" src="https://cdn.ampproject.org/v0/amp-experiment-0.1.js"></script>' . "\n";
+    ?>
+    
     <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
+
+<?php 
+// // [FIX] Đã xóa 'layout="nodisplay"'
+if ( $is_ab_test_valid ) : 
+?>
+<amp-experiment>
+    <script type="application/json">
+        <?php echo $ab_test_settings; // In trực tiếp JSON đã lưu từ admin ?>
+    </script>
+</amp-experiment>
+<?php 
+endif; 
+// ?>
+
+<?php 
+// $integration_options = get_option('tuancele_integrations_settings', []);
+$ga4_id = $integration_options['ga4_measurement_id'] ?? 'G-KJEEPYVTBR';
+
+if ( ! empty( $ga4_id ) ) : 
+?>
+<amp-analytics type="gtag" data-credentials="include">
+<script type="application/json">
+{
+  "vars": {
+    "gtag_id": "<?php echo esc_js( $ga4_id ); ?>",
+    "config": {
+      "<?php echo esc_js( $ga4_id ); ?>": { "groups": "default" }
+    }
+  }
+  <?php 
+  // [CẬP NHẬT] Tự động thêm triggers nếu A/B test được bật
+  if ( $is_ab_test_valid ) : 
+  ?>
+  ,"triggers": {
+    "trackExperimentView": {
+      "on": "amp-experiment.view",
+      "vars": {
+        "event_name": "experiment_view",
+        "event_category": "AMP Experiment",
+        "experiment_name": "VARIANT.experiment",
+        "variant_name": "VARIANT.variant"
+      }
+    }
+  }
+  <?php endif; // Kết thúc A/B test triggers ?>
+}
+</script>
+</amp-analytics>
+<?php 
+endif; 
+// ?>
 
 
     <amp-state id="pwaStatus">

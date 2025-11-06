@@ -295,6 +295,11 @@ function tuancele_register_conditional_assets() {
         'amp_imagemap' => [
             ['element' => 'amp-lightbox', 'src' => 'https://cdn.ampproject.org/v0/amp-lightbox-0.1.js'],
         ],
+        // --- [THÊM MỚI] Tải script A/B Testing ---
+        'ab_test_variant' => [
+            ['element' => 'amp-experiment', 'src' => 'https://cdn.ampproject.org/v0/amp-experiment-0.1.js']
+        ],
+        // --- KẾT THÚC THÊM MỚI ---
     ];
 
     // Check for shortcodes in content

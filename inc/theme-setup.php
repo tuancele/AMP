@@ -108,10 +108,6 @@ add_action('amp_custom_css', 'tuancele_inject_amp_css_from_file');
  * [BƯỚC 1] WALKER CHO MENU SIDEBAR (AMP-ACCORDION V3 - CHUẨN AMP)
  * =========================================================================
  */
-function tuancele_add_accordion_script() {
-    echo '<script async custom-element="amp-accordion" src="https://cdn.ampproject.org/v0/amp-accordion-0.1.js"></script>' . "\n";
-}
-add_action( 'wp_head', 'tuancele_add_accordion_script', 7 );
 
 class Tuancele_AMP_Sidebar_Walker extends Walker_Nav_Menu {
     public function start_lvl( &$output, $depth = 0, $args = null ) {

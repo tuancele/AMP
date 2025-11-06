@@ -49,7 +49,8 @@ function tuancele_append_auto_rating_box( $content ) {
 add_filter( 'the_content', 'tuancele_append_auto_rating_box' );
 
 /**
- * Xử lý, tạo và chèn Mục lục (TOC) vào nội dung.
+ * Xử lý, tạo và chèn Mục lục (TOC).
+ * [FIX V2] Sửa lỗi trùng lặp ID h2 bằng preg_replace (limit 1)
  */
 function tuancele_stable_toc_handler($content) {
     // [ĐÃ SỬA] Khởi tạo biến global, mặc định là false
@@ -67,17 +68,27 @@ function tuancele_stable_toc_handler($content) {
     $toc_items = []; $new_content = $content;
     foreach ($matches as $match) {
         $level = $match[1]; $text = strip_tags($match[3]); $id = sanitize_title($text); $temp_id = $id; $counter = 2;
-        while (strpos($new_content, 'id="' . $temp_id . '"') !== false) { $temp_id = $id . '-' . $counter++; }
+        
+        // Kiểm tra ID trùng lặp trong nội dung *đã được sửa đổi*
+        while (strpos($new_content, 'id="' . $temp_id . '"') !== false) { 
+            $temp_id = $id . '-' . $counter++; 
+        }
         $id = $temp_id;
+        
         $new_heading = sprintf('<h%s id="%s"%s>%s</h%s>', $level, esc_attr($id), $match[2], $match[3], $level);
-        $new_content = str_replace($match[0], $new_heading, $new_content);
+        
+        // [FIX LỖI] Sử dụng preg_replace với giới hạn 1 lần
+        // Điều này đảm bảo chỉ thay thế 1 tiêu đề mỗi lần, ngay cả khi chúng giống hệt nhau
+        $new_content = preg_replace('/' . preg_quote($match[0], '/') . '/', $new_heading, $new_content, 1);
+        
         $toc_items[] = ['id' => $id, 'text' => $text, 'level' => (int)$level];
     }
+    
+    // Phần chèn TOC vào bài viết (giữ nguyên)
     $toc_html = tuancele_build_stable_toc_html($toc_items);
     $insertion_point = strpos($new_content, '</p>');
     return ($insertion_point !== false) ? substr_replace($new_content, '</p>' . $toc_html, $insertion_point, 4) : $toc_html . $new_content;
 }
-add_filter('the_content', 'tuancele_stable_toc_handler', 25);
 
 /**
  * Hàm trợ giúp, xây dựng HTML cho Mục lục (TOC).

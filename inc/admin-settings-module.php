@@ -2,7 +2,8 @@
 /**
  * inc/admin-settings-module.php
  * Module Class tạo tất cả các trang Cài đặt Theme trong khu vực Admin WP.
- * [UPDATE]: Thêm checkbox Bật/Tắt cho reCAPTCHA và logic ẩn/hiện.
+ * [UPDATE]: Đã tách trang Hướng dẫn Shortcode ra file riêng (inc/admin-shortcode-guide.php).
+ * [FIX]: Đã XÓA script accordion bị trùng lặp cho trang Hướng dẫn Shortcode.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -63,282 +64,45 @@ final class AMP_Admin_Settings_Module {
      *
      */
     public function create_settings_pages() {
-        add_menu_page('Cài đặt Theme AMP', 'Cài đặt AMP', 'manage_options', 'tuancele-amp-settings', [ $this, 'shortcode_guide_page' ], 'dashicons-superhero-alt', 60);
-        add_submenu_page('tuancele-amp-settings', 'Hướng dẫn sử dụng Shortcode', 'Hướng dẫn Shortcode', 'manage_options', 'tuancele-amp-settings', [ $this, 'shortcode_guide_page' ]);
-        add_submenu_page('tuancele-amp-settings', 'Cài đặt Tích hợp', 'Tích hợp Dịch vụ', 'manage_options', 'tuancele-amp-integrations', [ $this, 'integrations_settings_page' ]);
+        // [ĐÃ SỬA] Thay đổi hàm callback mặc định từ 'shortcode_guide_page' thành 'integrations_settings_page'
+        add_menu_page('Cài đặt Theme AMP', 'Cài đặt AMP', 'manage_options', 'tuancele-amp-settings', [ $this, 'integrations_settings_page' ], 'dashicons-superhero-alt', 60);
+        
+        // [ĐÃ SỬA] Đổi slug của trang "Tích hợp" thành slug menu cha để làm trang mặc định
+        add_submenu_page('tuancele-amp-settings', 'Cài đặt Tích hợp', 'Tích hợp Dịch vụ', 'manage_options', 'tuancele-amp-settings', [ $this, 'integrations_settings_page' ]);
+        
+        // [THÊM MỚI] Trang A/B Testing
+        add_submenu_page('tuancele-amp-settings', 'A/B Testing', 'A/B Testing', 'manage_options', 'tuancele-amp-ab-testing', [ $this, 'ab_testing_page' ]);
+
         add_submenu_page('tuancele-amp-settings', 'Cấu hình Schema Doanh nghiệp', 'Cấu hình Schema', 'manage_options', 'tuancele-amp-schema', [ $this, 'schema_settings_page' ]);
         add_submenu_page('tuancele-amp-settings', 'Cài đặt gửi mail (SMTP)', 'Cài đặt SMTP', 'manage_options', 'tuancele-amp-smtp', [ $this, 'smtp_settings_page' ]);
         add_submenu_page('tuancele-amp-settings', 'Cài đặt Cloudflare R2', 'Cài đặt R2', 'manage_options', 'tuancele-amp-r2', [ $this, 'r2_settings_page' ]);
-        
-        // [THAY ĐỔI] Đổi tên trang Turnstile thành Google reCAPTCHA
         add_submenu_page('tuancele-amp-settings', 'Google reCAPTCHA v3', 'Cấu hình Captcha', 'manage_options', 'tuancele-amp-recaptcha', [ $this, 'recaptcha_settings_page' ]);
-        
         add_submenu_page('tuancele-amp-settings', 'Cài đặt các Nút Nổi', 'Các Nút Nổi', 'manage_options', 'tuancele-amp-floating-buttons', [ $this, 'floating_buttons_page' ]);
 
-        // [TỐI ƯU V8.2 - BẮT ĐẦU FIX]
-        // Thêm thủ công các CPT (Event, Image Map) vào menu "Cài đặt AMP".
-        // Các CPT này đã được đăng ký trên hook 'init' với 'show_in_menu' => false.
-        
-        // Thêm submenu cho Image Maps
-        add_submenu_page(
-            'tuancele-amp-settings',                  // $parent_slug
-            __('Image Maps', 'tuancele-amp'),         // $page_title
-            __('Image Maps', 'tuancele-amp'),         // $menu_title
-            'manage_options',                         // $capability
-            'edit.php?post_type=image_map',           // $menu_slug (trỏ đến trang danh sách CPT)
-            false                                     // $function
-        );
-
-        // Thêm submenu cho Sự kiện (Event)
-        add_submenu_page(
-            'tuancele-amp-settings',                  // $parent_slug
-            __('Sự kiện', 'tuancele-amp'),            // $page_title
-            __('Sự kiện', 'tuancele-amp'),            // $menu_title
-            'manage_options',                         // $capability
-            'edit.php?post_type=event',               // $menu_slug (trỏ đến trang danh sách CPT)
-            false                                     // $function
-        );
-        // [TỐI ƯU V8.2 - KẾT THÚC FIX]
+        // Thêm CPTs vào menu
+        add_submenu_page('tuancele-amp-settings', __('Image Maps', 'tuancele-amp'), __('Image Maps', 'tuancele-amp'), 'manage_options', 'edit.php?post_type=image_map', false);
+        add_submenu_page('tuancele-amp-settings', __('Sự kiện', 'tuancele-amp'), __('Sự kiện', 'tuancele-amp'), 'manage_options', 'edit.php?post_type=event', false);
     }
 
     /**
      * 2. CÁC HÀM RENDER GIAO DIỆN HTML CHO TỪNG TRANG
      *
      */
-
-    // ... (Phần còn lại của tệp không thay đổi) ...
     
-    // ... (Hàm shortcode_guide_page() không thay đổi, giữ nguyên) ...
-    public function shortcode_guide_page() {
+    // --- [THÊM MỚI] Trang A/B Testing ---
+    public function ab_testing_page() {
         ?>
         <div class="wrap">
-            <h1>Hướng dẫn sử dụng Shortcode của Theme</h1>
-            <p>Sao chép và dán các shortcode dưới đây vào trình soạn thảo bài viết/trang để sử dụng. Click vào tiêu đề để xem chi tiết.</p>
-            <style>
-                .shortcode-guide-box { background: #fff; border: 1px solid #ccd0d4; padding: 15px 20px; margin-bottom: 20px; border-left-width: 4px; border-radius: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
-                .shortcode-guide-box h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #eee; font-size: 1.3em; cursor: pointer; }
-                .shortcode-guide-box h2::after { content: ' ▼'; font-size: 0.8em; }
-                .shortcode-guide-box .details { display: none; margin-top: 15px; }
-                .shortcode-guide-box code { background: #f0f0f1; padding: 10px; border-radius: 4px; font-size: 14px; display: block; margin: 10px 0; white-space: pre-wrap; word-break: break-all; overflow-x: auto; border: 1px solid #ddd; }
-                .shortcode-guide-box .description { margin-top: 10px; color: #555; font-style: italic; }
-                .shortcode-guide-box .note { color: #d63638; font-weight: bold; margin-top: 10px; }
-                .shortcode-guide-box ul { margin-top: 10px; list-style: disc; padding-left: 20px;}
-                .shortcode-guide-box table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                .shortcode-guide-box th, .shortcode-guide-box td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                .shortcode-guide-box th { background-color: #f9f9f9; }
-            </style>
-            <script>
-                jQuery(document).ready(function($){
-                    $('.shortcode-guide-box h2').on('click', function(){
-                        $(this).next('.details').slideToggle();
-                    });
-                });
-            </script>
-
-            <?php /* === MỤC FORM === */ ?>
-            <div class="shortcode-guide-box" style="border-left-color: #fd7e14;">
-                <h2>📝 Form Đăng Ký (Đầy đủ)</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một form đăng ký đầy đủ với các trường: Họ tên, Số điện thoại, Email. Dữ liệu sẽ được gửi đến Zoho và Email admin.</p>
-                    <code>[form_dang_ky tieu_de="Đăng Ký Tư Vấn Miễn Phí" nut_gui="Gửi Thông Tin Ngay"]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th><th>Ví dụ</th></tr>
-                        <tr><td><code>tieu_de</code></td><td>Tiêu đề của form. Mặc định: "Đăng Ký Tư Vấn Miễn Phí".</td><td><code>tieu_de="Nhận báo giá"</code></td></tr>
-                        <tr><td><code>nut_gui</code></td><td>Nội dung của nút gửi. Mặc định: "Gửi Thông Tin Ngay".</td><td><code>nut_gui="Đăng ký ngay!"</code></td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="shortcode-guide-box" style="border-left-color: #fd7e14;">
-                <h2>📞 Form Đăng Ký (Chỉ SĐT)</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một form đăng ký tinh gọn chỉ yêu cầu nhập số điện thoại.</p>
-                    <code>[dang_ky_sdt tieu_de="Nhận báo giá nhanh" nut_gui="Yêu Cầu Gọi Lại"]</code>
-                     <table>
-                        <tr><th>Tham số</th><th>Mô tả</th><th>Ví dụ</th></tr>
-                        <tr><td><code>tieu_de</code></td><td>Tiêu đề của form. Mặc định: "Để lại số điện thoại, chúng tôi sẽ gọi lại ngay!".</td><td><code>tieu_de="Tư vấn qua SĐT"</code></td></tr>
-                        <tr><td><code>nut_gui</code></td><td>Nội dung của nút gửi. Mặc định: "Yêu Cầu Gọi Lại".</td><td><code>nut_gui="Gọi cho tôi"</code></td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <?php /* === MỤC SCHEMA & SEO === */ ?>
-            <div class="shortcode-guide-box" style="border-left-color: #28a745;">
-                <h2>❓ FAQ (Hỏi & Đáp) kèm Schema</h2>
-                <div class="details">
-                    <p class="description">Tạo danh sách câu hỏi - trả lời dạng accordion và tự động thêm Schema `FAQPage` để hiển thị trên kết quả tìm kiếm Google.</p>
-                    <code>[schema_faq]
-        [q]Câu hỏi 1 của bạn là gì?[/q]
-        [a]Đây là câu trả lời cho câu hỏi 1.[/a]
-        [q]Câu hỏi thứ 2?[/q]
-        [a]Và đây là câu trả lời cho câu hỏi 2.[/a]
-    [/schema_faq]</code>
-                    <p class="note">Lưu ý: Luôn đặt các cặp thẻ `[q]` và `[a]` bên trong thẻ `[schema_faq]`.</p>
-                </div>
-            </div>
-            
-            <div class="shortcode-guide-box" style="border-left-color: #6f42c1;">
-                <h2>📋 Hướng dẫn (How-To) kèm Schema</h2>
-                <div class="details">
-                    <p class="description">Tạo danh sách các bước hướng dẫn và tự động thêm Schema `HowTo`.</p>
-                    <code>[schema_howto title="Cách làm bánh mì" total_time="PT1H30M"]
-        [step title="Bước 1: Chuẩn bị bột"]Nội dung chi tiết cho bước 1.[/step]
-        [step title="Bước 2: Nhào bột"]Nội dung chi tiết cho bước 2.[/step]
-    [/schema_howto]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th><th>Ví dụ</th></tr>
-                        <tr><td><code>title</code></td><td><strong>(Bắt buộc)</strong> Tiêu đề của bản hướng dẫn.</td><td><code>title="Cách cài đặt VPN"</code></td></tr>
-                        <tr><td><code>total_time</code></td><td>Thời gian hoàn thành theo chuẩn ISO 8601. Ví dụ: 1 giờ 30 phút là <code>PT1H30M</code>. 15 phút là <code>PT15M</code>.</td><td><code>total_time="PT45M"</code></td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="shortcode-guide-box" style="border-left-color: #007bff;">
-                <h2>⭐ Sản phẩm (Product) kèm Schema</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một khối thông tin sản phẩm chuyên nghiệp và tự động thêm Schema `Product` đầy đủ.</p>
-                    <p class="note">Hầu hết các thông tin sẽ được tự động lấy từ bài viết (Tiêu đề, ảnh đại diện, mô tả ngắn...). Bạn chỉ cần điền các tham số nếu muốn ghi đè.</p>
-                    <code>[amp_product price="150000" currency="VND" brand="Tên thương hiệu" sku="MA-SP-01" rating_value="4.8" rating_count="25"]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>price</code></td><td>Giá sản phẩm (chỉ điền số).</td></tr>
-                        <tr><td><code>currency</code></td><td>Đơn vị tiền tệ. Mặc định: "VND".</td></tr>
-                        <tr><td><code>brand</code></td><td>Tên thương hiệu. Mặc định là tên website.</td></tr>
-                        <tr><td><code>sku</code></td><td>Mã sản phẩm. Mặc định là ID bài viết.</td></tr>
-                        <tr><td><code>rating_value</code></td><td>Điểm đánh giá. Mặc định là 5.0.</td></tr>
-                        <tr><td><code>rating_count</code></td><td>Số lượng đánh giá. Mặc định là số lượt xem bài viết.</td></tr>
-                        <tr><td><code>image_id</code></td><td>ID của ảnh để ghi đè ảnh đại diện mặc định.</td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <?php /* === MỤC NỘI DUNG & HIỂN THỊ === */ ?>
-            <div class="shortcode-guide-box" style="border-left-color: #17a2b8;">
-                <h2>🖼️ Slider Ảnh (Carousel)</h2>
-                <div class="details">
-                    <p class="description">Tạo một slider ảnh tự động chạy, có nút điều hướng từ danh sách ID ảnh trong Media Library.</p>
-                    <code>[amp_slider ids="12,34,56" width="1600" height="900"]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>ids</code></td><td><strong>(Bắt buộc)</strong> Danh sách ID của các ảnh, cách nhau bởi dấu phẩy.</td></tr>
-                        <tr><td><code>width</code> / <code>height</code></td><td>Tỷ lệ khung hình của slider. Mặc định: 1600 / 900 (tỷ lệ 16:9).</td></tr>
-                    </table>
-                </div>
-            </div>
-            
-            <div class="shortcode-guide-box" style="border-left-color: #ffc107;">
-                <h2>📣 Quảng cáo Nội bộ</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một khối quảng cáo/đề xuất đến một hoặc nhiều bài viết khác trên trang, giúp tăng internal link.</p>
-                    <p><strong>Hiển thị một bài viết:</strong></p>
-                    <code>[quang_cao_noi_bo id="123"]</code>
-                    <p><strong>Hiển thị nhiều bài viết:</strong></p>
-                    <code>[quang_cao_noi_bo id="123,456,789"]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>id</code></td><td><strong>(Bắt buộc)</strong> Một hoặc nhiều ID của các bài viết cần hiển thị, cách nhau bởi dấu phẩy.</td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="shortcode-guide-box" style="border-left-color: #dc3545;">
-                <h2>🗺️ Image Map (Bản đồ ảnh tương tác)</h2>
-                <div class="details">
-                    <p class="description">Tạo một bản đồ ảnh với các điểm nóng (hotspot) có thể nhấp vào để mở link hoặc popup.</p>
-                    <p class="note">Bạn phải tạo một "Image Map" trong menu <strong>Cài đặt AMP &gt; Image Maps</strong> trước, sau đó lấy ID của nó để sử dụng shortcode này.</p>
-                    <code>[amp_imagemap id="123"]</code>
-                     <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>id</code></td><td><strong>(Bắt buộc)</strong> ID của Image Map đã được tạo trong admin.</td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="shortcode-guide-box" style="border-left-color: #343a40;">
-                <h2>🌍 Hiển thị theo Địa lý (Geo Targeting)</h2>
-                <div class="details">
-                    <p class="description">Hiển thị các nội dung khác nhau cho người dùng dựa trên vị trí địa lý của họ (Việt Nam, Hà Nội, HCM...).</p>
-                    <code>Chào mừng [geo_display]
-        [geo_option code="hanoi" text="người dân thủ đô"]
-        [geo_option code="hcm" text="các bạn ở Sài Gòn"]
-        [geo_option code="vn" text="các bạn ở Việt Nam"]
-        [geo_option code="default" text="quý khách"]
-    [/geo_display]!</code>
-                    <table>
-                        <tr><th>Tham số (cho <code>geo_option</code>)</th><th>Mô tả</th></tr>
-                        <tr><td><code>code</code></td><td>Mã vị trí. Các mã có sẵn: <code>vn</code>, <code>hanoi</code>, <code>hcm</code>, <code>danang</code>, <code>haiphong</code>... và <strong>(bắt buộc)</strong> <code>default</code> cho các trường hợp còn lại.</td></tr>
-                        <tr><td><code>text</code></td><td>Nội dung văn bản tương ứng với mã đó.</td></tr>
-                    </table>
-                </div>
-            </div>
-
-             <div class="shortcode-guide-box" style="border-left-color: #e83e8c;">
-                <h2>🗓️ Thanh Thông báo Sự kiện</h2>
-                <div class="details">
-                    <p class="description">Tự động hiển thị một thanh thông báo dạng carousel ở đầu trang, lấy dữ liệu từ các "Sự kiện" bạn đã tạo trong menu <strong>Sự kiện</strong>. Shortcode này không có tham số.</p>
-                    <code>[amp_event_bar]</code>
-                    <p class="note">Chỉ cần đặt shortcode này vào vị trí bạn muốn (thường là trong file `header.php`). Nếu có sự kiện được publish, thanh thông báo sẽ tự động hiện ra.</p>
-                </div>
-            </div>
-
-            <?php /* === MỤC BẤT ĐỘNG SẢN === */ ?>
-            <div class="shortcode-guide-box" style="border-left-color: #20c997;">
-                <h2>🏠 Chi tiết Bất động sản</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một bảng thông số chi tiết cho một bất động sản, tự động thêm Schema `RealEstateListing` nếu có giá.</p>
-                    <code>[chi_tiet_bds gia="12 Tỷ" dientich="80" phongngu="2" phongtam="2" huong="Đông Nam" phaply="Sổ hồng" price="12" price_unit="Tỷ" street_address="123 Nguyễn Lương Bằng" address_locality="Quận 7" address_region="TP. Hồ Chí Minh"]</code>
-                    <p class="note">Các tham số `price`, `price_unit`, `street_address`... dùng để tạo Schema và không hiển thị trực tiếp. Các tham số còn lại (`gia`, `dientich`...) sẽ hiển thị trên bảng.</p>
-                </div>
-            </div>
-            
-            <div class="shortcode-guide-box" style="border-left-color: #20c997;">
-                <h2>📈 Công cụ Tính Lãi suất</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một công cụ tương tác cho phép người dùng ước tính khoản vay mua nhà. Shortcode này không có tham số.</p>
-                    <code>[tinh_lai_suat]</code>
-                </div>
-            </div>
-            
-            <div class="shortcode-guide-box" style="border-left-color: #20c997;">
-                <h2>✨ Bất động sản Nổi bật</h2>
-                <div class="details">
-                    <p class="description">Hiển thị một lưới các bài viết bất động sản dựa trên danh sách ID bạn cung cấp. Tương tự `[quang_cao_noi_bo]` nhưng dành cho layout BĐS.</p>
-                    <code>[bds_noibat ids="123,456" title="Các dự án đáng chú ý"]</code>
-                    <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>ids</code></td><td><strong>(Bắt buộc)</strong> Danh sách ID của các bài viết, cách nhau bởi dấu phẩy.</td></tr>
-                        <tr><td><code>title</code></td><td>Tiêu đề cho cả khối.</td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="shortcode-guide-box" style="border-left-color: #20c997;">
-                <h2>🌳 Tiện ích Xung quanh</h2>
-                <div class="details">
-                    <p class="description">Tạo một danh sách các nhóm tiện ích (trường học, bệnh viện...) dưới dạng accordion.</p>
-                    <code>[tien_ich_xung_quanh]
-        [tien_ich title="Giáo dục" icon="school"]
-            - Trường Mầm non ABC (500m)
-            - Trường Tiểu học XYZ (1km)
-        [/tien_ich]
-        [tien_ich title="Y tế" icon="hospital"]
-            - Bệnh viện Quận 7 (2km)
-        [/tien_ich]
-    [/tien_ich_xung_quanh]</code>
-                    <table>
-                        <tr><th>Tham số (cho <code>tien_ich</code>)</th><th>Mô tả</th></tr>
-                        <tr><td><code>title</code></td><td>Tiêu đề của nhóm tiện ích.</td></tr>
-                        <tr><td><code>icon</code></td><td>Icon hiển thị. Các giá trị có sẵn: <code>school</code>, <code>hospital</code>, <code>market</code>, <code>park</code>, <code>default</code>.</td></tr>
-                    </table>
-                </div>
-            </div>
-
+            <h1>Cài đặt A/B Testing (AMP Experiment)</h1>
+            <p>Sử dụng tính năng này để thử nghiệm các biến thể khác nhau của nội dung (nút bấm, tiêu đề, form...) và theo dõi hiệu quả qua Google Analytics.</p>
+            <form method="post" action="options.php">
+                <?php settings_fields('tuancele_amp_ab_testing_group'); do_settings_sections('tuancele-amp-ab-testing'); submit_button(); ?>
+            </form>
         </div>
         <?php
     }
-
-    // ... (Các hàm schema_settings_page(), smtp_settings_page(), r2_settings_page() không đổi) ...
-     public function schema_settings_page() {
+    
+    public function schema_settings_page() {
         ?>
         <div class="wrap">
             <h1>Cấu hình Schema Doanh nghiệp & Local SEO</h1>
@@ -371,7 +135,6 @@ final class AMP_Admin_Settings_Module {
         <?php
     }
 
-    // [THAY ĐỔI] Sửa hàm turnstile_settings_page() thành recaptcha_settings_page()
     public function recaptcha_settings_page() {
         ?>
         <div class="wrap">
@@ -411,14 +174,46 @@ final class AMP_Admin_Settings_Module {
      *
      */
     public function register_all_settings() {
-        // ... (Các hàm register_setting cho integrations, schema, smtp, r2 không đổi) ...
+        
         register_setting('tuancele_amp_integrations_group', 'tuancele_integrations_settings');
         add_settings_section('tuancele_integrations_zoho_section', 'Tích hợp Zoho CRM', null, 'tuancele-amp-integrations');
         add_settings_field('zoho_xnqsjsdp', 'Zoho Key (xnQsjsdp)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xnqsjsdp']);
         add_settings_field('zoho_xmiwtld', 'Zoho Key (xmIwtLD)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xmiwtld']);
-        // Thêm section mới cho Kích hoạt Module
+        
+        add_settings_section('tuancele_integrations_ga4_section', 'Tích hợp Google Analytics (GA4)', null, 'tuancele-amp-integrations');
+        add_settings_field(
+            'ga4_measurement_id', 
+            'Mã theo dõi (Measurement ID)', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_integrations_ga4_section', 
+            [
+                'id' => 'ga4_measurement_id', 
+                'type' => 'text', 
+                'placeholder' => 'G-XXXXXXXXXX',
+                'default' => 'G-KJEEPYVTBR', 
+                'desc' => 'Nhập mã GA4 của bạn (ví dụ: G-KJEEPYVTBR). Mã này sẽ được chèn vào <head>.'
+            ]
+        );
+
         add_settings_section('tuancele_integrations_modules_section', 'Kích hoạt Module', null, 'tuancele-amp-integrations');
         add_settings_field('enable_property_cpt', 'Kích hoạt Module BĐS', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_modules_section', ['id' => 'enable_property_cpt', 'type' => 'checkbox']);
+
+        // --- [THÊM MỚI] Đăng ký Cài đặt A/B Testing ---
+        register_setting(
+            'tuancele_amp_ab_testing_group', 
+            'tuancele_ab_testing_settings',
+            ['sanitize_callback' => 'sanitize_textarea_field'] // Dùng hàm sanitize mặc định cho textarea
+        );
+        add_settings_section('tuancele_ab_testing_main_section', 'Thiết lập Thử nghiệm', null, 'tuancele-amp-ab-testing');
+        add_settings_field(
+            'experiments_config', 
+            'Cấu hình Thử nghiệm', 
+            [ $this, 'ab_testing_field_callback' ], 
+            'tuancele-amp-ab-testing', 
+            'tuancele_ab_testing_main_section'
+        );
+        // --- KẾT THÚC THÊM MỚI ---
 
         register_setting('tuancele_amp_schema_group', 'tuancele_amp_schema_options', [ $this, 'sanitize_callback' ]);
         add_settings_section('tuancele_schema_main_section', 'Thông tin chung', null, 'tuancele-amp-schema');
@@ -450,7 +245,7 @@ final class AMP_Admin_Settings_Module {
         register_setting(
             'tuancele_amp_smtp_group', 
             'tuancele_smtp_settings',
-            [ $this, 'sanitize_smtp_settings' ] // <-- THÊM DÒNG NÀY
+            [ $this, 'sanitize_smtp_settings' ] 
         );
         add_settings_section('tuancele_smtp_settings_section', 'Cấu hình gửi Mail (SMTP)', [ $this, 'smtp_section_callback' ], 'tuancele-amp-smtp');
         $smtp_fields = [
@@ -463,8 +258,6 @@ final class AMP_Admin_Settings_Module {
                 'label' => 'Kích hoạt SMTP', 
                 'type' => 'checkbox'
             ],
-            
-            // --- BẮT ĐẦU THAY ĐỔI ---
             'smtp_provider' => [
                 'label' => 'Loại Dịch vụ SMTP', 
                 'type' => 'select', 
@@ -478,10 +271,7 @@ final class AMP_Admin_Settings_Module {
                 'label' => 'Email gửi (From)', 
                 'type' => 'email', 
                 'desc' => 'Bắt buộc với SES. Phải là email đã xác thực (Verified Identity).'
-                // Trường này sẽ được JS ẩn/hiện
             ],
-            // --- KẾT THÚC THAY ĐỔI ---
-
             'smtp_user' => [
                 'label' => 'Tài khoản SMTP',
                 'desc' => 'Ví dụ: (Gmail: <code>example@gmail.com</code>) hoặc (SES: <code>AKIA...</code>)'
@@ -516,7 +306,6 @@ final class AMP_Admin_Settings_Module {
         add_settings_field('tuancele_r2_migration_tool', 'Trạng thái & Hành động', [ $this, 'r2_migration_tool_callback' ], 'tuancele-amp-r2', 'tuancele_r2_migration_section');
 
 
-        // [ĐÃ SỬA] Đăng ký setting cho reCAPTCHA (Thêm trường 'enable_recaptcha')
         register_setting('tuancele_amp_recaptcha_group', 'tuancele_recaptcha_settings');
         add_settings_section('tuancele_recaptcha_main_section', 'Khóa API Google reCAPTCHA v3', null, 'tuancele-amp-recaptcha');
         $recaptcha_fields = [
@@ -528,14 +317,13 @@ final class AMP_Admin_Settings_Module {
             add_settings_field(
                 'tuancele_recaptcha_' . $id, 
                 $field['label'], 
-                [ $this, 'recaptcha_field_callback' ], // Hàm callback mới
+                [ $this, 'recaptcha_field_callback' ], 
                 'tuancele-amp-recaptcha', 
                 'tuancele_recaptcha_main_section', 
                 array_merge($field, ['id' => $id])
             );
         }
         
-        // ... (Hàm register_setting cho floating_buttons không đổi) ...
         register_setting('tuancele_amp_floating_buttons_group', 'tuancele_floating_buttons_options');
         add_settings_section('tuancele_floating_buttons_main_section', 'Thiết lập hiển thị', null, 'tuancele-amp-floating-buttons');
         add_settings_field('enable_call_button', 'Kích hoạt Nút Gọi', [ $this, 'floating_buttons_field_callback' ], 'tuancele-amp-floating-buttons', 'tuancele_floating_buttons_main_section', ['id' => 'enable_call_button']);
@@ -547,12 +335,12 @@ final class AMP_Admin_Settings_Module {
      *
      */
     
-    // ... (Các hàm callback cho integrations, schema, smtp, r2 không đổi) ...
     public function integrations_field_callback($args) {
         $options = get_option('tuancele_integrations_settings', []);
         $id = $args['id'];
-        $value = $options[$id] ?? '';
-        $type = $args['type'] ?? 'text'; // Mặc định là 'text'
+        $value = isset($options[$id]) && $options[$id] !== '' ? $options[$id] : ($args['default'] ?? '');
+        $type = $args['type'] ?? 'text';
+        $placeholder = $args['placeholder'] ?? '';
 
         switch ($type) {
             case 'checkbox':
@@ -561,10 +349,70 @@ final class AMP_Admin_Settings_Module {
             
             case 'text':
             default:
-                echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" />';
+                echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" placeholder="'.esc_attr($placeholder).'" />';
                 break;
         }
+
+        if (!empty($args['desc'])) {
+            echo '<p class="description">' . wp_kses_post($args['desc']) . '</p>';
+        }
     }
+
+// --- [THÊM MỚI] Callback cho A/B Testing ---
+    public function ab_testing_field_callback() {
+        $value = get_option('tuancele_ab_testing_settings', '');
+        ?>
+        <style>
+            .ab-test-instructions {
+                background: #f9f9f9;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 15px;
+                margin-top: 10px;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .ab-test-instructions p { margin-top: 0; }
+            .ab-test-instructions code {
+                background: #e0e0e0;
+                padding: 2px 5px;
+                border-radius: 3px;
+                font-family: monospace;
+            }
+        </style>
+        <textarea name="tuancele_ab_testing_settings" rows="15" class="large-text code"><?php echo esc_textarea($value); ?></textarea>
+        <div class="ab-test-instructions">
+            <p>Nhập cấu hình thử nghiệm của bạn tại đây dưới dạng JSON. Cấu hình này sẽ được chèn vào thẻ <code>&lt;amp-experiment&gt;</code>.</p>
+            <p><strong>Quan trọng:</strong> Mã theo dõi GA4 (từ trang "Tích hợp Dịch vụ") phải được cấu hình để A/B testing hoạt động.</p>
+            <p><strong>Cấu trúc mẫu (JSON) - Phải khớp với shortcode:</strong></p>
+<pre>{
+  "form_title_test": {
+    "sticky": true,
+    "variants": {
+      "tieu_de_goc": 50,
+      "tieu_de_moi": 50
+    }
+  },
+  "cta_button_test": {
+    "sticky": true,
+    "variants": {
+      "button_xanh": 50,
+      "button_do": 50
+    }
+  },
+  "homepage_banner_test": {
+    "sticky": true,
+    "variants": {
+      "banner_co_gai": 50,
+      "banner_toa_nha": 50
+    }
+  }
+}</pre>
+            <p>Sử dụng shortcode <code>[ab_test_variant experiment="tên_thử_nghiệm" variant="tên_biến_thể"]...[/ab_test_variant]</code> trong bài viết để hiển thị nội dung tương ứng.</p>
+        </div>
+        <?php
+    }
+    
     public function schema_field_callback($args) {
         $options = get_option('tuancele_amp_schema_options', []);
         $id = $args['id'];
@@ -755,6 +603,12 @@ final class AMP_Admin_Settings_Module {
             'cai-dat-amp_page_tuancele-amp-r2',
             'cai-dat-amp_page_tuancele-amp-recaptcha' // Thêm trang này
         ];
+        
+        // --- [ĐÃ XÓA] ---
+        // Đã xóa khối if ( $hook === 'cai-dat-amp_page_tuancele-amp-shortcode-guide' )
+        // vì script accordion đã được chuyển vào file inc/admin-shortcode-guide.php
+        // --- KẾT THÚC XÓA ---
+
 
         if ( in_array($hook, $pages_with_toggle) ) {
             

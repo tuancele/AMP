@@ -43,22 +43,5 @@ get_header();
 </div>
 
 <?php
-// [FIX] ĐẨY DỮ LIỆU VÀO GTM DATALAYER
-// Chỉ thực hiện nếu có dữ liệu tracking hợp lệ
-if (is_array($tracking_data)) {
-    ?>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({
-            'event': 'form_submission_success',
-            'leadData': {
-                'phone_hash': '<?php echo esc_js($tracking_data['phone_hash']); ?>',
-                'name': '<?php echo esc_js($tracking_data['name']); ?>'
-            }
-        });
-    </script>
-    <?php
-}
-
 get_footer();
 ?>
