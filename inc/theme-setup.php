@@ -102,4 +102,47 @@ function tuancele_inject_amp_css_from_file() {
 }
 // Hook này phải khớp với hook trong header.php
 add_action('amp_custom_css', 'tuancele_inject_amp_css_from_file');
+
+/**
+ * =========================================================================
+ * [BƯỚC 1] WALKER CHO MENU SIDEBAR (AMP-ACCORDION V3 - CHUẨN AMP)
+ * =========================================================================
+ */
+function tuancele_add_accordion_script() {
+    echo '<script async custom-element="amp-accordion" src="https://cdn.ampproject.org/v0/amp-accordion-0.1.js"></script>' . "\n";
+}
+add_action( 'wp_head', 'tuancele_add_accordion_script', 7 );
+
+class Tuancele_AMP_Sidebar_Walker extends Walker_Nav_Menu {
+    public function start_lvl( &$output, $depth = 0, $args = null ) {
+        if ( $depth === 0 ) { $output .= '<div><ul class="sub-menu">'; } 
+        else { $output .= '<ul class="sub-menu">'; }
+    }
+    public function end_lvl( &$output, $depth = 0, $args = null ) {
+        if ( $depth === 0 ) { $output .= '</ul></div>'; } 
+        else { $output .= '</ul>'; }
+    }
+    public function start_el( &$output, $item, $depth = 0, $args = null, $id = 0 ) {
+        $has_children = in_array( 'menu-item-has-children', $item->classes );
+        if ( $depth === 0 ) {
+            $output .= '<section>'; 
+            if ( $has_children ) {
+                $output .= '<h4 class="amp-menu-header">' . esc_html( $item->title ) . '</h4>';
+            } else {
+                $output .= '<h4 class="amp-menu-link-section">';
+                $output .= '<a href="' . esc_url( $item->url ) . '">' . esc_html( $item->title ) . '</a>';
+                $output .= '</h4>';
+                $output .= '<div></div>'; // Thẻ rỗng bắt buộc cho AMP
+            }
+        } else {
+            $output .= '<li>';
+            $output .= '<a href="' . esc_url( $item->url ) . '">' . esc_html( $item->title ) . '</a>';
+        }
+    }
+    public function end_el( &$output, $item, $depth = 0, $args = null ) {
+        if ( $depth === 0 ) { $output .= '</section>'; } 
+        else { $output .= '</li>'; }
+    }
+}
+
 ?>

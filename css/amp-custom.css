@@ -2812,3 +2812,191 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
 /* =========================================================================
    END IMAGE MAP & HOTSPOT
    ========================================================================= */
+
+/* =========================================================================
+   [MỚI V2] CSS CHO MENU ĐA CẤP (DESKTOP & MOBILE)
+   ========================================================================= */
+
+/* --- 1. Menu Desktop (Dropdown bằng CSS) --- */
+nav.main-menu ul li { position: relative; }
+nav.main-menu ul li.menu-item-has-children > a::after {
+    content: ' ▼'; font-size: 0.7em; margin-left: 5px; display: inline-block;
+}
+nav.main-menu ul .sub-menu {
+    display: none; position: absolute; top: 100%; left: 0;
+    background-color: #004a8f; min-width: 220px; z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); padding: 0;
+    list-style: none; border-radius: 0 0 4px 4px;
+}
+nav.main-menu ul li:hover > .sub-menu { display: block; }
+nav.main-menu ul .sub-menu .sub-menu { left: 100%; top: 0; border-radius: 4px; }
+nav.main-menu ul .sub-menu li { width: 100%; }
+nav.main-menu ul .sub-menu li a {
+    padding: 12px 15px; border-bottom: 1px solid #0056b3; white-space: nowrap;
+}
+nav.main-menu ul .sub-menu li:last-child a { border-bottom: none; }
+nav.main-menu ul .sub-menu li.menu-item-has-children > a::after {
+    content: ' ►'; position: absolute; right: 10px;
+}
+
+/* --- 2. Menu Di động (AMP Sidebar Accordion) - NÂNG CẤP V10 (FIX VIỀN TRẮNG - FINAL) --- */
+        
+/* Reset <h4> của section */
+amp-sidebar nav amp-accordion section h4 {
+    margin: 0;
+    font-weight: normal; 
+    font-size: 18px;
+    position: relative; 
+    border: none; /* [FIX V10] Xóa border cho h4 */
+}
+
+/* Style cho TIÊU ĐỀ MỤC CÓ CON (h4.amp-menu-header) */
+amp-sidebar nav amp-accordion section h4.amp-menu-header {
+    padding: 15px 40px 15px 10px; 
+    color: #fff;
+    cursor: pointer;
+    background-color: #333;
+    position: relative;
+    border-bottom: 1px solid #444; /* [FIX V10] Thêm lại viền cho cấp 1 */
+}
+
+/* Icon [ + ] / [ - ] cho mục có con */
+amp-sidebar nav amp-accordion section h4.amp-menu-header::after {
+    content: '+';
+    position: absolute; 
+    right: 15px; 
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+amp-sidebar nav amp-accordion section[expanded] h4.amp-menu-header::after {
+    content: '−';
+}
+
+/* Style cho LINK MỤC KHÔNG CÓ CON (h4.amp-menu-link-section) */
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section {
+    background-color: #333; 
+}
+
+/* Style cho link <a> bên trong mục không có con */
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section a {
+    display: block;
+    padding: 15px 40px 15px 10px; 
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid #444; /* [FIX V10] Thêm lại viền cho cấp 1 */
+}
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section a:hover {
+    background-color: #444; 
+}
+
+/* Nội dung menu con (cấp 2, 3...) */
+amp-sidebar nav amp-accordion .sub-menu {
+    background-color: #222; padding: 0 0 0 15px; margin: 0; list-style: none;
+}
+
+/* Xóa viền trên của sub-menu khi mở */
+amp-sidebar nav amp-accordion section[expanded] .sub-menu {
+    border-top: 1px solid #555; /* [FIX V10] Thêm viền mỏng phân tách */
+}
+
+/* [FIX V10] Ghi đè rule gốc bằng cách set border-bottom: none */
+amp-sidebar nav amp-accordion .sub-menu li a {
+    display: block; padding: 15px 10px; color: #fff; text-decoration: none;
+    border-bottom: none; /* <-- SỬA LỖI QUAN TRỌNG NHẤT */
+    font-size: 16px;
+}
+amp-sidebar nav amp-accordion .sub-menu li a:hover {
+     background-color: #333;
+}
+
+amp-sidebar nav amp-accordion .sub-menu .sub-menu {
+    padding-left: 10px; background-color: #1a1a1a;
+}
+amp-sidebar nav amp-accordion .sub-menu .sub-menu li a {
+    font-size: 15px; 
+}
+amp-sidebar nav amp-accordion .sub-menu .sub-menu li a:hover {
+     background-color: #2a2a2a;
+}
+
+/* [FIX V10] Ghi đè rule gốc cho các mục <li> (nếu có) */
+amp-sidebar nav amp-accordion > li {
+    border-bottom: 1px solid #444;
+}
+amp-sidebar nav amp-accordion > li > a {
+    border-bottom: none; /* Ghi đè rule gốc */
+}
+/* --- [BƯỚC 3] CSS V11 (FIX TOÀN BỘ VIỀN - KHÔNG !IMPORTANT) --- */
+
+/* 1. Ghi đè rule gốc cho CẤP 1 (Mục không có con) */
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section a {
+    display: block;
+    padding: 15px 10px; 
+    color: #fff;
+    text-decoration: none;
+    font-size: 18px; 
+    border: none; /* <-- FIX VIỀN */
+}
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section a:hover {
+    background-color: #444; 
+}
+
+/* 2. Ghi đè rule gốc cho CẤP 1 (Mục có con) */
+amp-sidebar nav amp-accordion section h4.amp-menu-header {
+    padding: 15px 40px 15px 10px; 
+    color: #fff;
+    cursor: pointer;
+    background-color: #333;
+    position: relative;
+    font-weight: normal; 
+    font-size: 18px;
+    margin: 0;
+    border: none; /* <-- FIX VIỀN */
+}
+amp-sidebar nav amp-accordion section h4.amp-menu-header::after {
+    content: '+';
+    position: absolute; 
+    right: 15px; 
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+amp-sidebar nav amp-accordion section[expanded] h4.amp-menu-header::after {
+    content: '−';
+}
+amp-sidebar nav amp-accordion section h4.amp-menu-link-section {
+    background-color: #333; 
+    font-weight: normal; 
+    font-size: 18px;
+    margin: 0;
+    border: none; /* <-- FIX VIỀN */
+}
+
+/* 3. Ghi đè rule gốc cho CẤP 2+ (sub-menu) */
+amp-sidebar nav amp-accordion .sub-menu {
+    background-color: #222; padding: 0 0 0 15px; margin: 0; list-style: none;
+}
+amp-sidebar nav amp-accordion section[expanded] .sub-menu {
+    border: none; /* <-- FIX VIỀN */
+}
+amp-sidebar nav amp-accordion .sub-menu li a {
+    display: block; padding: 15px 10px; color: #fff; text-decoration: none;
+    border: none; /* <-- FIX VIỀN QUAN TRỌNG NHẤT */
+    font-size: 16px;
+}
+amp-sidebar nav amp-accordion .sub-menu li a:hover {
+     background-color: #333;
+}
+amp-sidebar nav amp-accordion .sub-menu .sub-menu {
+    padding-left: 10px; background-color: #1a1a1a;
+}
+amp-sidebar nav amp-accordion .sub-menu .sub-menu li a {
+    font-size: 15px; 
+    border: none; /* <-- FIX VIỀN */
+}
+amp-sidebar nav amp-accordion .sub-menu .sub-menu li a:hover {
+     background-color: #2a2a2a;
+}

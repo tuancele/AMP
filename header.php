@@ -1,11 +1,13 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
- * header.php - Phiên bản tối ưu UX, đã loại bỏ thanh progress bar cũ.
+ * header.php - Phiên bản nâng cấp V2.
  *
- * [SỬA LỖI EVENT BAR]
- * - Đã xóa câu lệnh if (function_exists(...)) bị lỗi,
- * - cho phép do_shortcode('[amp_event_bar]') luôn chạy.
+ * [NÂNG CẤP MENU ĐA CẤP]
+ * - Thêm script amp-accordion (được hook từ theme-setup.php).
+ * - Sửa đổi <amp-sidebar> để chứa <amp-accordion>.
+ * - Sử dụng Tuancele_AMP_Sidebar_Walker cho menu di động.
+ * - Menu desktop (main-menu) sẽ được xử lý bằng CSS thuần.
  */
 ?>
 <!doctype html>
@@ -46,7 +48,29 @@
     <amp-geo layout="nodisplay">
         </amp-geo>
     <div id="toc-overlay" on="tap:tocAccordion.toggle" role="button" tabindex="-1" aria-label="Đóng Mục lục" hidden></div>
-    <amp-sidebar id="my-sidebar" layout="nodisplay" side="left"><nav><?php if (has_nav_menu('primary')) { wp_nav_menu(['theme_location' => 'primary', 'container' => false]); } ?></nav></amp-sidebar>
+    
+    <amp-sidebar id="my-sidebar" layout="nodisplay" side="left">
+        <nav>
+            <?php 
+            // Kiểm tra xem có menu 'primary' và class Walker đã tồn tại chưa
+            if ( has_nav_menu('primary') && class_exists('Tuancele_AMP_Sidebar_Walker') ) {
+                echo '<amp-accordion>'; // Bọc menu trong accordion
+                
+                wp_nav_menu([
+                    'theme_location' => 'primary', 
+                    'container'      => false,
+                    'items_wrap'     => '%3$s', // Chỉ xuất ra nội dung, không bọc <ul>
+                    'walker'         => new Tuancele_AMP_Sidebar_Walker() // Sử dụng Walker mới
+                ]);
+                
+                echo '</amp-accordion>';
+            } elseif ( has_nav_menu('primary') ) {
+                // Fallback nếu class Walker bị lỗi
+                wp_nav_menu(['theme_location' => 'primary', 'container' => false]);
+            }
+            ?>
+        </nav>
+    </amp-sidebar>
 
     <div class="pwa-install-banner-wrapper" 
          [hidden]="pwaStatus.bannerDismissed"
@@ -70,13 +94,23 @@
         <div class="container header-container">
             <div class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a></div>
             <link rel="preload" href="<?php echo esc_url(get_template_directory_uri() . '/assets/fonts/poppins-v20-700.woff2'); ?>" as="font" type="font/woff2" crossorigin="anonymous">
-            <nav class="main-menu"><?php wp_nav_menu(['theme_location' => 'primary', 'container' => false]); ?></nav>
+            
+            <?php // --- SỬA ĐỔI MENU DESKTOP --- ?>
+            <nav class="main-menu">
+                <?php 
+                // Menu desktop không cần walker, chỉ cần CSS
+                wp_nav_menu([
+                    'theme_location' => 'primary', 
+                    'container' => false 
+                ]); 
+                ?>
+            </nav>
+            <?php // --- KẾT THÚC SỬA ĐỔI MENU DESKTOP --- ?>
+            
             <button on="tap:my-sidebar.toggle" class="menu-button" aria-label="Open menu">☰</button>
         </div>
     </header>
     <?php 
-    // [SỬA LỖI] Xóa bỏ câu lệnh `if (function_exists(...))`
-    // vì nó kiểm tra sai tên hàm và ngăn shortcode chạy.
     echo do_shortcode('[amp_event_bar]');
     ?>
     <div class="site-content-wrapper"><main class="container">

@@ -303,3 +303,5 @@ function tuancele_create_visitor_log_table() {
 add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
 
 // [ĐÃ XÓA DÒNG '}' BỊ THỪA GÂY LỖI]
+// TẠM THỜI: Xóa cache CSS
+//delete_transient('tuancele_amp_css_cache_v2');
