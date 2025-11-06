@@ -1,8 +1,11 @@
 /**
  * inc/qapage/assets/css/qapage-style.css
  *
- * CSS tùy chỉnh CHỈ dành cho Module QAPage.
- * Tệp này được tải động bởi class-qapage-assets.php.
+ * [FIX V6] Sửa lỗi layout (không dùng !important)
+ * 1. Tăng độ ưu tiên (specificity) cho selector của Câu trả lời (Answer)
+ * để ép `display: flex`.
+ * 2. Sửa lỗi CSS cho Bình luận con (Comment) để xử lý
+ * nội dung nhiều dòng (thay 'display: inline' thành 'display: block').
  */
 
 /* =================================================================
@@ -27,13 +30,20 @@
 
 /* Thẻ <li> chứa mỗi Câu trả lời (Answer) */
 .qapage-answer {
-    display: flex; /* Bố cục: [Voting] [Answer Body] */
-    gap: 15px;
     padding: 20px 0;
     border-bottom: 1px solid #f0f0f0;
 }
 .qapage-answer:last-of-type {
     border-bottom: none;
+}
+
+/* * [SỬA LỖI CSS V6]
+ * Sử dụng selector "mạnh" (cụ thể) để buộc áp dụng `display: flex`
+ * mà không cần dùng !important.
+*/
+main.container #comments.qapage-comments-area ol.comment-list li.qapage-answer > article {
+    display: flex; /* Bố cục: [Voting] [Answer Body] */
+    gap: 15px;
 }
 
 /* --- Cột Voting (Bỏ phiếu) --- */
@@ -84,12 +94,13 @@
 /* --- Thân Câu trả lời (Answer Body) --- */
 .answer-body {
     flex-grow: 1;
-    width: calc(100% - 55px); /* Ngăn vỡ layout */
+    width: 100%; /* Cho phép co giãn */
 }
 .answer-body .comment-content {
     font-size: 1rem;
     line-height: 1.7;
     margin-bottom: 15px;
+    word-break: break-word; /* [FIX] Thêm để chống vỡ layout chữ dài */
 }
 
 /* --- Meta của Answer (Tác giả & Nút chức năng) --- */
@@ -161,12 +172,34 @@
     line-height: 1.6;
     background-color: #fafafa;
 }
+
+/* [SỬA LỖI V6] Bỏ 'display: inline' */
 .qapage-comment .comment-body {
-    display: inline; /* Hiển thị trên 1 dòng */
+    /* Xóa 'display: inline' */
 }
+
+/* [SỬA LỖI V6] Sửa .comment-content (giờ là <div>) */
 .qapage-comment .comment-content {
-    display: inline;
+    display: block; /* Đổi thành block để chứa <p> */
+    vertical-align: middle;
+    margin: 0 0 8px 0; /* Thêm khoảng cách dưới */
+    padding: 8px 12px; 
+    color: #495057;
+    background-color: #f8f9fa; /* Tái sử dụng style từ theme chính */
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    word-break: break-word; /* [FIX] Thêm để chống vỡ layout chữ dài */
 }
+
+/* [SỬA LỖI V6] Xóa margin của thẻ <p> BÊN TRONG comment-content */
+.qapage-comment .comment-content p {
+    margin: 0 0 5px 0;
+    padding: 0;
+}
+.qapage-comment .comment-content p:last-child {
+    margin-bottom: 0;
+}
+
 .qapage-comment .comment-author {
     display: inline;
     font-weight: 600;
@@ -174,6 +207,19 @@
 .qapage-comment .comment-date {
     font-size: 0.9em;
     color: #777;
+}
+
+li.bypostauthor .comment-author::after {
+    content: 'Tác giả';
+    display: inline-block;
+    background-color: var(--mau-chinh);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
 }
 
 /* =================================================================
@@ -277,4 +323,76 @@
 }
 .qapage-related-list li a:hover {
     text-decoration: underline;
+}
+/* =================================================================
+   5. [NÂNG CẤP V5] CSS CHO NÚT "ĐẶT CÂU HỎI" (.qapage-ask-button)
+   ================================================================= */
+   
+/* Keyframe cho animation "rung" nhẹ */
+@keyframes qapage-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+    }
+}
+
+.qapage-ask-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    /* Màu xanh lá cây nổi bật */
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: #ffffff;
+    padding: 12px 24px; /* Tăng padding cho nút to hơn */
+    border-radius: 50px;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 1.05rem; /* Tăng cỡ chữ */
+    margin: 10px 0 25px 0; /* Tăng khoảng cách dưới */
+    border: none;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    
+    /* Animation mới */
+    animation: qapage-pulse 2.5s infinite cubic-bezier(0.66, 0, 0, 1);
+    transition: all 0.3s ease; /* Transition mượt hơn */
+}
+
+.qapage-ask-button:hover {
+    color: #ffffff;
+    animation: none; /* Dừng animation khi hover */
+    transform: translateY(-4px) scale(1.03); /* Hiệu ứng 3D */
+    box-shadow: 0 9px 25px rgba(40, 167, 69, 0.45);
+    background: linear-gradient(135deg, #2ebf4f 0%, #28a745 100%);
+}
+
+.qapage-ask-button svg {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.3s ease;
+}
+
+.qapage-ask-button:hover svg {
+    transform: rotate(5deg) scale(1.1); /* Hiệu ứng icon khi hover */
+}
+/* =================================================================
+   6. [THÊM MỚI] CSS CHO KHU VỰC CÂU HỎI GẦN ĐÂY
+   ================================================================= */
+
+.qapage-recent-list {
+    margin: 40px 0;
+    padding-top: 30px;
+    border-top: 1px solid #eee;
+}
+
+.qapage-recent-title {
+    text-align: center;
+    font-size: 1.8rem;
+    color: var(--mau-chu);
+    margin-top: 0;
+    margin-bottom: 30px;
+    font-family: 'Poppins', sans-serif;
 }

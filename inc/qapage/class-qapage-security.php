@@ -5,7 +5,11 @@
  * Xử lý bảo mật cho Module QAPage, bao gồm:
  * 1. Tích hợp reCaptcha vào Form Gửi Trả lời (comment_form).
  * 2. Xác thực reCaptcha cho bình luận mới (preprocess_comment).
- * 3. Tái sử dụng logic xác thực reCaptcha từ các module cũ.
+ *
+ * [FIX V2] Sửa lỗi 403 khi gửi câu trả lời.
+ * - Đổi data-action mong đợi từ 'qapage_submit_answer' thành 'submit_comment'
+ * để khớp với data-action được gửi từ tuancele_amp_comment_form()
+ * (trong inc/comments-module.php).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,8 +24,6 @@ class AMP_QAPage_Security {
 
     /**
      * Khởi tạo class, tải cài đặt reCaptcha và đăng ký hooks.
-     *
-     * [SỬA LỖI]: Sửa tên hàm 'publicGAge_Security()' thành 'public function __construct()'
      */
     public function __construct() {
         // Tải cài đặt reCaptcha MỘT LẦN (tái sử dụng từ cài đặt theme)
@@ -55,19 +57,18 @@ class AMP_QAPage_Security {
         if ( get_post_type() !== 'qapage_question' ) {
             return $defaults;
         }
-
-        // Tạo HTML cho reCaptcha
+        
+        // [FIX V2] Đổi data-action thành 'submit_comment'
         $recaptcha_html = '<div class="comment-form-captcha qapage-recaptcha" style="font-size: 11px; color: #777; margin-bottom: 10px;">
             <amp-recaptcha-input
                 layout="nodisplay"
                 name="g-recaptcha-response"
                 data-sitekey="' . esc_attr( $this->recaptcha_site_key ) . '"
-                data-action="qapage_submit_answer">
+                data-action="submit_comment">
             </amp-recaptcha-input>
         </div>';
 
         // Chèn HTML reCaptcha vào cuối form, ngay trước nút submit
-        // 'comment_notes_after' là một vị trí an toàn, đáng tin cậy
         $defaults['comment_notes_after'] = ( $defaults['comment_notes_after'] ?? '' ) . $recaptcha_html;
 
         return $defaults;
@@ -89,6 +90,16 @@ class AMP_QAPage_Security {
         if ( current_user_can( 'manage_options' ) ) {
             return $commentdata;
         }
+        
+        // Nếu bình luận này được gửi qua AMP XHR (bởi module kia),
+        // nó sẽ có 'comment_agent' là 'AMP-Form'.
+        // Chúng ta chỉ nên chạy xác thực reCaptcha này nếu nó
+        // KHÔNG phải là form XHR (ví dụ: form `comment_form()` gốc).
+        if ( isset( $commentdata['comment_agent'] ) && $commentdata['comment_agent'] === 'AMP-Form' ) {
+            // Lần kiểm tra 1 (trong inc/comments-module.php) đã chạy rồi.
+            // Bỏ qua lần kiểm tra thứ 2 này để tránh lỗi.
+            return $commentdata;
+        }
 
         // Lấy token từ POST request
         $recaptcha_token = $_POST['g-recaptcha-response'] ?? '';
@@ -98,8 +109,8 @@ class AMP_QAPage_Security {
             wp_die( __( 'Lỗi: reCaptcha token bị thiếu. Vui lòng quay lại và thử lại.' ), 'Lỗi reCaptcha', 400 );
         }
 
-        // Gọi hàm xác thực (logic tái sử dụng)
-        if ( ! $this->verify_recaptcha_token( $recaptcha_token, $user_ip, 'qapage_submit_answer' ) ) {
+        // [FIX V2] Đổi action mong đợi thành 'submit_comment'
+        if ( ! $this->verify_recaptcha_token( $recaptcha_token, $user_ip, 'submit_comment' ) ) {
             wp_die( __( 'Lỗi: Xác minh reCaptcha thất bại. Có vẻ bạn là robot.' ), 'Lỗi reCaptcha', 403 );
         }
 

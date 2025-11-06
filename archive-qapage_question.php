@@ -5,6 +5,8 @@
  * Template Archive cho CPT 'qapage_question' (Module QAPage).
  * URL: /qapage/
  * Hiển thị danh sách tất cả các câu hỏi.
+ *
+ * [FIX] Thêm nút "Đặt câu hỏi" để điều hướng về trang /qa-page/
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,6 +31,15 @@ if ( function_exists( 'tuancele_amp_display_breadcrumbs' ) ) {
     tuancele_amp_display_breadcrumbs();
 }
 ?>
+
+<?php
+// [THÊM MỚI] Thêm nút Đặt Câu Hỏi Mới
+$ask_page_url = home_url('/qa-page/'); 
+?>
+<a href="<?php echo esc_url($ask_page_url); ?>" class="qapage-ask-button">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2.5 11.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+    <span>Đặt câu hỏi của bạn</span>
+</a>
 
 <?php if ( have_posts() ) : ?>
     

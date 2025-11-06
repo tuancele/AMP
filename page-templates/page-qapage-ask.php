@@ -6,11 +6,8 @@
  * - Hiển thị form đăng câu hỏi (cho user đã đăng nhập).
  * - Hiển thị form Đăng ký + Đặt câu hỏi (cho khách).
  *
- * Hướng dẫn sử dụng:
- * 1. Tạo một Trang (Page) mới trong WordPress.
- * 2. Đặt tiêu đề (ví dụ: "Đặt Câu Hỏi Mới").
- * 3. Trong phần "Thuộc tính trang" -> "Mẫu", chọn "QAPage - Trang Đặt Câu Hỏi".
- * 4. Xuất bản trang.
+ * [UPDATE] Thêm vòng lặp WP_Query để hiển thị các câu hỏi gần đây
+ * ngay bên dưới form.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -60,7 +57,7 @@ if ( function_exists( 'tuancele_amp_display_breadcrumbs' ) ) {
               action-xhr="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
             
             <input type="hidden" name="action" value="qapage_ask">
-            <input type="hidden" name="nonce" value="<?php echo wp_create_nonce( 'qapage_ask_nonce' ); ?>">
+            <input type="hidden" name="_ajax_nonce" value="<?php echo wp_create_nonce( 'qapage_ask_nonce' ); ?>">
             
             <div class="form-title">Đặt câu hỏi của bạn</div>
 
@@ -116,7 +113,7 @@ if ( function_exists( 'tuancele_amp_display_breadcrumbs' ) ) {
               action-xhr="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
             
             <input type="hidden" name="action" value="qapage_register_and_ask">
-            <input type="hidden" name="nonce" value="<?php echo wp_create_nonce( 'qapage_ask_nonce' ); ?>">
+            <input type="hidden" name="_ajax_nonce" value="<?php echo wp_create_nonce( 'qapage_ask_nonce' ); ?>">
             
             <div class="form-title">Đặt câu hỏi (Bạn sẽ tạo tài khoản mới)</div>
 
@@ -189,7 +186,46 @@ if ( function_exists( 'tuancele_amp_display_breadcrumbs' ) ) {
 
     <?php endif; ?>
 
-</div>
+</div> <?php // Đóng thẻ .qapage-ask-container ?>
+
+
+<?php 
+// =================================================================
+// [THÊM MỚI] KHU VỰC HIỂN THỊ CÁC CÂU HỎI GẦN ĐÂY
+// =================================================================
+
+// 1. Chuẩn bị Query
+$recent_questions_query = new WP_Query([
+    'post_type'      => 'qapage_question',
+    'posts_per_page' => 3, // Hiển thị 3 câu hỏi mới nhất
+    'post_status'    => 'publish',
+    'orderby'        => 'date',
+    'order'          => 'DESC',
+]);
+
+// 2. Kiểm tra và Hiển thị
+if ( $recent_questions_query->have_posts() ) : 
+?>
+    <section class="qapage-recent-list">
+        <h2 class="qapage-recent-title">Các câu hỏi gần đây</h2>
+        
+        <?php // Tái sử dụng layout grid của theme ?>
+        <div class="posts-grid-container">
+            <?php 
+            while ( $recent_questions_query->have_posts() ) : $recent_questions_query->the_post();
+                // Tái sử dụng template card
+                get_template_part( 'template-parts/content-card' );
+            endwhile; 
+            ?>
+        </div>
+    </section>
+<?php
+endif;
+
+// 3. Reset Query
+wp_reset_postdata(); 
+?>
+
 
 <?php
 get_footer();

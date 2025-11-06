@@ -3,6 +3,8 @@
  * inc/comments-module.php
  * Module Class xử lý hệ thống bình luận AMP tùy chỉnh.
  * [UPDATE]: Đã thêm logic kiểm tra cờ 'enable_recaptcha' (Bật/Tắt).
+ * [FIX] Xóa bỏ add_action 'wp_head' tải amp-recaptcha-input
+ * vì script này đã được tải toàn cục trong header.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -33,9 +35,12 @@ final class AMP_Comments_Module {
         if ( $script_added || is_admin() || !$is_enabled ) {
             return;
         }
-        add_action( 'wp_head', function() {
-            echo '<script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>' . "\n";
-        }, 7 );
+        
+        // [FIX] Xóa 3 dòng add_action 'wp_head'
+        // add_action( 'wp_head', function() {
+        //    echo '<script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>' . "\n";
+        // }, 7 );
+
         $script_added = true;
     }
     

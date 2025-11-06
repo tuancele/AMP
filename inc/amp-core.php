@@ -3,18 +3,10 @@
  * inc/amp-core.php
  * Chứa toàn bộ logic lõi để xử lý và dọn dẹp AMP.
  *
- * [TỐI ƯU V6 - LCP LOGIC CORRECTION]
- * - Căn cứ theo yêu cầu: LCP trên trang single/page LUÔN LÀ ảnh đầu tiên
- * trong content, KHÔNG PHẢI ảnh đại diện.
- *
- * - Sửa hàm tuancele_responsive_lcp_preload_final():
- * - Khi is_singular(), hàm này sẽ phân tích post_content để tìm và preload
- * ảnh đầu tiên (thay vì preload ảnh đại diện).
- * - Khi is_archive(), hàm vẫn giữ logic cũ (preload ảnh đại diện của bài đầu tiên).
- *
- * - Sửa hàm tuancele_mark_first_content_image_as_lcp():
- * - Quay lại logic V4: Luôn luôn đánh dấu ảnh đầu tiên trong content
- * khi is_singular(), bất kể có ảnh đại diện hay không.
+ * [TỐI ƯU V8 - FIX LỖI SCRIPT TRÙNG LẶP]
+ * - Đã vô hiệu hóa logic tải 'amp-accordion' (đã fix).
+ * - Đã vô hiệu hóa logic tải 'amp-lightbox'
+ * vì script này đã được tải toàn cục trong header.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -293,22 +285,24 @@ function tuancele_register_conditional_assets() {
             ['element' => 'amp-carousel', 'src' => 'https://cdn.ampproject.org/v0/amp-carousel-0.2.js']
         ],
         'amp_imagemap' => [
-            ['element' => 'amp-lightbox', 'src' => 'https://cdn.ampproject.org/v0/amp-lightbox-0.1.js'],
+            // [SỬA LỖI] Đã vô hiệu hóa dòng này vì script được tải toàn cục trong header.php
+            // ['element' => 'amp-lightbox', 'src' => 'https://cdn.ampproject.org/v0/amp-lightbox-0.1.js'],
         ],
-        // --- [THÊM MỚI] Tải script A/B Testing ---
         'ab_test_variant' => [
             ['element' => 'amp-experiment', 'src' => 'https://cdn.ampproject.org/v0/amp-experiment-0.1.js']
         ],
-        // --- KẾT THÚC THÊM MỚI ---
     ];
 
     // Check for shortcodes in content
     foreach ($asset_map as $shortcode => $assets) {
         if ( !empty($content) && has_shortcode( $content, $shortcode ) ) {
             foreach ($assets as $asset_info) {
-                $scripts_to_load[$asset_info['element']] = $asset_info['src'];
-                if (isset($asset_info['hash'])) {
-                    $meta_to_load[] = $asset_info['hash'];
+                // Kiểm tra xem $asset_info có phải là mảng hợp lệ không
+                if (is_array($asset_info) && isset($asset_info['element'])) {
+                    $scripts_to_load[$asset_info['element']] = $asset_info['src'];
+                    if (isset($asset_info['hash'])) {
+                        $meta_to_load[] = $asset_info['hash'];
+                    }
                 }
             }
         }
@@ -326,10 +320,11 @@ function tuancele_register_conditional_assets() {
     }
 
 
-    // Always load amp-accordion on singular pages for TOC, FAQs, etc.
-    if (is_singular()) {
-        $scripts_to_load['amp-accordion'] = 'https://cdn.ampproject.org/v0/amp-accordion-0.1.js';
-    }
+    // [SỬA LỖI SCRIPT TRÙNG LẶP]
+    // Vô hiệu hóa 3 dòng này, vì amp-accordion đã được tải toàn cục trong header.php
+    // if (is_singular()) {
+    //    $scripts_to_load['amp-accordion'] = 'https://cdn.ampproject.org/v0/amp-accordion-0.1.js';
+    // }
 
     // Store the required scripts globally
     if ( ! empty( $scripts_to_load ) ) {

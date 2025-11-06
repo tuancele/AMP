@@ -6,6 +6,10 @@
  *
  * [TỐI ƯU V1 - CSS CACHE]
  * - Đã thêm logic xóa transient CSS trong hàm tuancele_theme_activation_flush_rewrites().
+ *
+ * [FIX MODULE Q&A]
+ * - Đã di chuyển 'new AMP_QAPage_Module()' ra global scope (bên ngoài hook 'init')
+ * để đảm bảo CPT 'qapage_question' được đăng ký kịp thời.
  */
 
 // Ngăn truy cập trực tiếp
@@ -42,7 +46,6 @@ require_once $theme_dir . '/inc/theme-setup.php'; // (Từ Bước 1)
 require_once $theme_dir . '/inc/amp-core.php'; // (Từ Bước 1)
 
 // Tải các Module Class
-// require_once $theme_dir . '/inc/admin-settings-loader.php'; // (ĐÃ VÔ HIỆU HÓA TỆP MỚI)
 require_once $theme_dir . '/inc/admin-settings-module.php'; // (ĐÃ KÍCH HOẠT LẠI TỆP CŨ)
 
 // [THÊM MỚI] Tải tệp Hướng dẫn Shortcode đã được tách
@@ -68,6 +71,11 @@ require_once $helpers_dir . 'template-tags.php';
 require_once $helpers_dir . 'content-filters.php';
 require_once $helpers_dir . 'query-filters.php';
 require_once $helpers_dir . 'utilities.php';
+
+// [THÊM MỚI] Tải file CSS có điều kiện
+// (File này bạn đã tạo ở bước trước)
+require_once $helpers_dir . 'conditional-css.php';
+
 require_once $theme_dir . '/inc/meta-boxes.php';
 require_once $theme_dir . '/inc/image-map-data.php';
 
@@ -75,10 +83,6 @@ require_once $theme_dir . '/inc/image-map-data.php';
 require_once $theme_dir . '/inc/r2/class-r2-integration.php';
 Tuancele_R2_Integration::get_instance();
 
-// (ĐÃ VÔ HIỆU HÓA LỆNH KHỞI CHẠY CỦA TỆP MỚI)
-// if ( is_admin() ) {
-//     new AMP_Admin_Settings_Loader();
-// }
 
 /**
  * =========================================================================
@@ -122,6 +126,10 @@ function tuancele_theme_activation_flush_rewrites() {
     // Tải và gọi hàm đăng ký CPT Image Map
     require_once get_template_directory() . '/inc/image-map-data.php';
     tuancele_register_image_map_cpt();
+    
+    // [THÊM MỚI] Tải và gọi hàm đăng ký CPT QAPage (quan trọng)
+    require_once get_template_directory() . '/inc/qapage/class-qapage-cpt.php';
+    (new AMP_QAPage_CPT())->register_cpt();
 
     // [THÊM MỚI] Kiểm tra và đăng ký CPT Bất động sản
     $integration_options = get_option('tuancele_integrations_settings', []);
@@ -238,10 +246,9 @@ add_action('init', 'tuancele_register_property_cpt', 0);
  * =========================================================================
  */
 function tuancele_init_functional_modules() {
-
-    // [SỬA LỖI] Khởi chạy Module QAPage MỚI ở đây (bên trong 'init')
-    new AMP_QAPage_Module();
     
+    // [ĐÃ XÓA] 'new AMP_QAPage_Module();' KHỎI ĐÂY
+
     // Khởi chạy Module Shortcodes
     new AMP_Shortcodes_Module();
 
@@ -253,11 +260,6 @@ function tuancele_init_functional_modules() {
 
     // Khởi chạy Module Bình luận
     new AMP_Comments_Module();
-
-    // [THAY ĐỔI MỚI - BƯỚC 6]
-    // Khởi chạy Module Sự kiện (Event)
-    // (ĐÃ DI CHUYỂN LÊN TRÊN GLOBAL SCOPE ĐỂ SỬA LỖI)
-    // [THAY ĐỔI KẾT THÚC - BƯỚC 6]
 
     // [THÊM MỚI] Khởi chạy Module Cài đặt Admin (Từ file cũ)
     if ( is_admin() ) {
@@ -275,6 +277,8 @@ add_action('init', 'tuancele_init_functional_modules');
  * =========================================================================
  */
 require_once $theme_dir . '/inc/qapage/qapage-module.php';
+// [SỬA LỖI] Khởi chạy ngay lập tức ở global scope
+new AMP_QAPage_Module();
 
 /**
  * =========================================================================
@@ -320,6 +324,5 @@ function tuancele_create_visitor_log_table() {
 // Đăng ký hàm này để nó chạy mỗi khi theme được kích hoạt
 add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
 
-// [ĐÃ XÓA DÒNG '}' BỊ THỪA GÂY LỖI]
 // TẠM THỜI: Xóa cache CSS
 delete_transient('tuancele_amp_css_cache_v2');

@@ -4,9 +4,12 @@
  *
  * Walker (Trình duyệt) tùy chỉnh cho wp_list_comments.
  *
- * [SỬA LỖI V4 FINAL]:
- * 1. Đã chuyển tên trường Nonce trong các form sang '_ajax_nonce'
- * để khắc phục lỗi 403 Forbidden.
+ * [SỬA LỖI V11 - FIX LỖI HIỂN THỊ COMMENT CON]
+ * - Đã thay đổi thẻ <span class="comment-content"> (ở depth > 0)
+ * thành <div class="comment-content">.
+ * - Lý do: wpautop() bọc nội dung comment trong thẻ <p>,
+ * dẫn đến HTML không hợp lệ (<p> bên trong <span>).
+ * - File qapage-style.css V6 sẽ xử lý CSS cho <div> này.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,14 +50,10 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
             $output .= '</amp-state>';
 
             // --- Bắt đầu thẻ <li> với Schema Answer ---
-            $output .= sprintf( '<li id="comment-%s" %s [class]="\'qapage-answer\' + (answerState' . $comment_id_str . '.is_accepted ? \' accepted-answer\' : \'\')">',
+            $output .= sprintf( '<li id="comment-%s" %s itemscope itemtype="https://schema.org/Answer" itemprop="suggestedAnswer" [class]="\'qapage-answer\' + (answerState' . $comment_id_str . '.is_accepted ? \' accepted-answer\' : \'\')">',
                 $comment->comment_ID,
-                comment_class( '', $comment, $post->ID, false )
+                comment_class( 'qapage-answer', $comment, $post->ID, false )
             );
-
-            // Gán Schema @type: Answer
-            $output .= '<article itemscope itemtype="https://schema.org/Answer" 
-                                 [itemprop]="answerState' . $comment_id_str . '.is_accepted ? \'acceptedAnswer\' : \'suggestedAnswer\'">';
 
             // --- Cột Bỏ phiếu (Voting Column) ---
             $output .= '<div class="answer-voting" data-comment-id="' . $comment->comment_ID . '">';
@@ -64,7 +63,7 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                               action-xhr="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '"
                               on="submit-success:AMP.setState({ 
                                   answerState' . $comment_id_str . ': { 
-                                      vote_score: event.response.new_score 
+                                      vote_score: event.response.data.new_score 
                                   } 
                               }); submit-error: AMP.setState({ 
                                 answerState' . $comment_id_str . ': { 
@@ -72,11 +71,11 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                                 } 
                               })">';
                 $output .= '<input type="hidden" name="action" value="qapage_vote">';
-                $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_vote_nonce' ) . '">'; // [FIX V4]: name="_ajax_nonce"
+                $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_vote_nonce' ) . '">';
                 $output .= '<input type="hidden" name="comment_id" value="' . $comment->comment_ID . '">';
                 $output .= '<input type="hidden" name="direction" value="up">';
                 $output .= '<button type="submit" class="vote-button vote-up" ' . ( $can_vote ? '' : 'disabled' ) . '>▲</button>';
-                $output .= '<div submit-success><template type="amp-mustache"></template></div>'; // Feedback (im lặng)
+                $output .= '<div submit-success><template type="amp-mustache"></template></div>';
                 $output .= '<div submit-error><template type="amp-mustache"><span class="vote-error" [text]="answerState' . $comment_id_str . '.error_message">{{message}}</span></template></div>';
             $output .= '</form>';
 
@@ -91,7 +90,7 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                               action-xhr="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '"
                               on="submit-success:AMP.setState({ 
                                   answerState' . $comment_id_str . ': { 
-                                      vote_score: event.response.new_score 
+                                      vote_score: event.response.data.new_score 
                                   } 
                               }); submit-error: AMP.setState({ 
                                 answerState' . $comment_id_str . ': { 
@@ -99,7 +98,7 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                                 } 
                               })">';
                 $output .= '<input type="hidden" name="action" value="qapage_vote">';
-                $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_vote_nonce' ) . '">'; // [FIX V4]: name="_ajax_nonce"
+                $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_vote_nonce' ) . '">';
                 $output .= '<input type="hidden" name="comment_id" value="' . $comment->comment_ID . '">';
                 $output .= '<input type="hidden" name="direction" value="down">';
                 $output .= '<button type="submit" class="vote-button vote-down" ' . ( $can_vote ? '' : 'disabled' ) . '>▼</button>';
@@ -123,7 +122,13 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                 $output .= get_avatar( $comment, $args['avatar_size'] );
                 $output .= '<div class="author-details">';
                 $output .= '<span itemprop="name">' . get_comment_author_link( $comment ) . '</span>';
-                $output .= '<meta itemprop="url" content="' . esc_url( get_comment_author_url( $comment ) ) . '">';
+                
+                $author_url = get_comment_author_url( $comment );
+                if ( empty( $author_url ) && $comment->user_id == 0 ) {
+                    $author_url = get_comment_link( $comment );
+                }
+                $output .= '<meta itemprop="url" content="' . esc_url( $author_url ) . '">';
+                
                 $output .= '<time class="comment-date" itemprop="dateCreated" datetime="' . get_comment_date( 'c', $comment ) . '">' . get_comment_date( '', $comment ) . '</time>';
                 $output .= '</div>'; // .author-details
                 $output .= '</div>'; // .comment-author
@@ -137,7 +142,7 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                                       action-xhr="' . esc_url( admin_url( 'admin-ajax.php' ) ) . '"
                                       on="submit-success:AMP.setState({ 
                                           answerState' . $comment_id_str . ': { 
-                                              is_accepted: event.response.status == \'accepted\' 
+                                              is_accepted: event.response.data.status == \'accepted\' 
                                           } 
                                       }); submit-error: AMP.setState({ 
                                         answerState' . $comment_id_str . ': { 
@@ -145,10 +150,9 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                                         } 
                                       })">';
                         $output .= '<input type="hidden" name="action" value="qapage_accept_answer">';
-                        $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_accept_nonce' ) . '">'; // [FIX V4]: name="_ajax_nonce"
+                        $output .= '<input type="hidden" name="_ajax_nonce" value="' . wp_create_nonce( 'qapage_accept_nonce' ) . '">';
                         $output .= '<input type="hidden" name="comment_id" value="' . $comment->comment_ID . '">';
                         
-                        // Nút bấm thay đổi nội dung dựa trên state
                         $output .= '<button type="submit" class="accept-answer-button" 
                                         [text]="answerState' . $comment_id_str . '.is_accepted ? \'Bỏ chấp nhận\' : \'Chấp nhận câu trả lời\'">
                                         ' . ( $is_accepted ? 'Bỏ chấp nhận' : 'Chấp nhận câu trả lời' ) . '
@@ -168,7 +172,6 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                 $output .= '</div>'; // .answer-actions
             $output .= '</div>'; // .answer-meta
             $output .= '</div>'; // .answer-body
-            $output .= '</article>';
 
         // =================================================================
         // LOGIC CHO CẤP 2+ (Depth > 0) - Đây là một "COMMENT"
@@ -179,12 +182,21 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                 comment_class( 'qapage-comment', $comment, $post->ID, false )
             );
             
-            // Đây là một bình luận VỀ câu trả lời, vì vậy nó có itemprop="comment"
             $output .= '<article itemscope itemtype="https://schema.org/Comment" itemprop="comment">';
             $output .= '<div class="comment-body">';
-            $output .= '<span class="comment-content" itemprop="text">' . get_comment_text( $comment ) . '</span>';
+            
+            // [SỬA LỖI V11] Thay <span> bằng <div> và thêm apply_filters
+            $output .= '<div class="comment-content" itemprop="text">' . apply_filters( 'comment_text', get_comment_text( $comment ), $comment, $args ) . '</div>';
+            
             $output .= ' – <span class="comment-author" itemprop="author" itemscope itemtype="https://schema.org/Person">';
             $output .= '<span itemprop="name">' . get_comment_author_link( $comment ) . '</span>';
+            
+            $author_url = get_comment_author_url( $comment );
+            if ( empty( $author_url ) && $comment->user_id == 0 ) {
+                $author_url = get_comment_link( $comment );
+            }
+            $output .= '<meta itemprop="url" content="' . esc_url( $author_url ) . '">';
+            
             $output .= '</span>';
             $output .= '<time class="comment-date" itemprop="dateCreated" datetime="' . get_comment_date( 'c', $comment ) . '"> @ ' . get_comment_date( '', $comment ) . '</time>';
             $output .= '</div>'; // .comment-body

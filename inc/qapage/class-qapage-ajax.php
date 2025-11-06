@@ -4,8 +4,9 @@
  *
  * Xử lý tất cả các tương tác AMP XHR (AJAX) cho module QAPage.
  *
- * [FINAL FIX V4] Đã chuyển tất cả các Nonce check sang sử dụng '_ajax_nonce'
- * để đồng bộ hóa với các form (File 10 và File 16).
+ * [FIX V5] Đã sửa lỗi 404: Nâng vai trò (role) của user mới đăng ký
+ * từ 'Subscriber' (mặc định) lên 'Author' (Tác giả) để
+ * họ có quyền 'publish_posts' (theo 'capability_type' => 'post').
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,7 +52,6 @@ class AMP_QAPage_Ajax {
      */
     public function handle_qapage_register_and_ask() {
         $this->send_amp_headers(); // Gửi AMP JSON headers
-        // [FIX NONCE] Tìm kiếm trường '_ajax_nonce'
         check_ajax_referer( 'qapage_ask_nonce', '_ajax_nonce' );
 
         // 1. Xác thực reCaptcha
@@ -83,13 +83,19 @@ class AMP_QAPage_Ajax {
             wp_send_json_error( [ 'message' => 'Không thể tạo tài khoản: ' . $user_id->get_error_message() ], 500 );
         }
         
-        // Cập nhật Tên hiển thị (display_name)
-        wp_update_user( [ 'ID' => $user_id, 'display_name' => $name ] );
+        // [FIX V5] Nâng vai trò user lên 'Author' để có quyền 'publish_posts'
+        // Đồng thời cập nhật display_name
+        wp_update_user( [ 
+            'ID'           => $user_id, 
+            'role'         => 'author', 
+            'display_name' => $name 
+        ] );
         
         // 4. Tự động Đăng nhập
         wp_set_auth_cookie( $user_id );
 
         // 5. Đăng Câu hỏi (với ID user mới)
+        // Vì user đã là 'Author', bài viết sẽ được 'publish' ngay lập tức.
         $this->create_qapage_post( $user_id );
     }
 
@@ -98,7 +104,6 @@ class AMP_QAPage_Ajax {
      */
     public function handle_qapage_ask() {
         $this->send_amp_headers();
-        // [FIX NONCE] Tìm kiếm trường '_ajax_nonce'
         check_ajax_referer( 'qapage_ask_nonce', '_ajax_nonce' );
         
         if ( ! is_user_logged_in() ) {
@@ -125,7 +130,9 @@ class AMP_QAPage_Ajax {
         if ( empty( $title ) || empty( $content ) ) {
             wp_send_json_error( [ 'message' => 'Vui lòng nhập cả Tiêu đề và Nội dung câu hỏi.' ], 400 );
         }
-
+        
+        // Người dùng (Author hoặc Admin) đã có quyền 'publish_posts'
+        // nên bài viết sẽ được publish
         $post_data = [
             'post_title'    => $title,
             'post_content'  => $content,
@@ -158,7 +165,6 @@ class AMP_QAPage_Ajax {
      */
     public function handle_qapage_vote() {
         $this->send_amp_headers();
-        // [FIX NONCE] Tìm kiếm trường '_ajax_nonce'
         check_ajax_referer( 'qapage_vote_nonce', '_ajax_nonce' );
         
         if ( ! is_user_logged_in() ) {
@@ -222,7 +228,6 @@ class AMP_QAPage_Ajax {
      */
     public function handle_qapage_accept_answer() {
         $this->send_amp_headers();
-        // [FIX NONCE] Tìm kiếm trường '_ajax_nonce'
         check_ajax_referer( 'qapage_accept_nonce', '_ajax_nonce' );
         
         if ( ! is_user_logged_in() ) {

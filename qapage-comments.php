@@ -6,8 +6,9 @@
  * File này được tải bởi class-qapage-templates.php (File 3)
  * thay vì file comments.php gốc.
  *
- * Nó KHÔNG sử dụng tuancele_amp_comment_form()
- * mà sử dụng comment_form() chuẩn để module bảo mật (File 5) có thể hook vào.
+ * [FIX] Sửa lỗi AMP "Only XHR based... submissions are support for POST":
+ * Thay thế hàm comment_form() (gốc của WP) bằng hàm tuancele_amp_comment_form()
+ * (hàm AMP-ready đã có sẵn trong theme, tại inc/comments-module.php).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -70,27 +71,17 @@ if ( post_password_required() ) {
     <?php endif; ?>
 
     <?php
-    // --- FORM GỬI CÂU TRẢ LỜI ---
-    // Chúng ta gọi hàm comment_form() chuẩn của WordPress.
-    // class-qapage-security.php (File 5) sẽ tự động:
-    // 1. Hook vào 'comment_form_defaults' để đổi tiêu đề.
-    // 2. Chèn reCaptcha vào form.
-    // 3. Hook vào 'preprocess_comment' để xác thực reCaptcha.
+    // --- [SỬA LỖI] ---
+    // Xóa toàn bộ khối comment_form() gốc của WordPress
+    // và thay thế bằng hàm AMP-ready của theme.
     
-    comment_form( [
-        // Tùy chỉnh các nhãn (label) cho phù hợp với logic QAPage
-        'title_reply'         => __( 'Gửi câu trả lời của bạn', 'tuancele-amp' ),
-        'title_reply_to'      => __( 'Trả lời cho %s', 'tuancele-amp' ), // Dùng cho bình luận nhỏ (cấp 2+)
-        'label_submit'        => __( 'Gửi câu trả lời', 'tuancele-amp' ),
-        'comment_field'       => '<p class="comment-form-comment"><label for="comment">' . _x( 'Nội dung trả lời', 'noun', 'tuancele-amp' ) . ' <span class="required">*</span></label><textarea id="comment" name="comment" cols="45" rows="8" maxlength="65525" required="required"></textarea></p>',
-        'comment_notes_after' => '', // Xóa ghi chú mặc định, vì File 5 sẽ chèn reCaptcha vào đây
-        'fields'              => [
-            // Tái sử dụng các trường mặc định của WordPress (đã được style bởi theme)
-            'author' => '<p class="comment-form-author"><label for="author">' . __( 'Tên', 'tuancele-amp' ) . ' <span class="required">*</span></label> ' .
-                        '<input id="author" name="author" type="text" value="' . esc_attr( $commenter['comment_author'] ) . '" size="30" maxlength="245" required="required" /></p>',
-            'email'  => '<p class="comment-form-email"><label for="email">' . __( 'Email', 'tuancele-amp' ) . ' <span class="required">*</span></label> ' .
-                        '<input id="email" name="email" type="email" value="' . esc_attr(  $commenter['comment_author_email'] ) . '" size="30" maxlength="100" aria-describedby="email-notes" required="required" /></p>',
-        ],
-    ] );
+    if ( function_exists('tuancele_amp_comment_form') ) {
+        // Đổi tiêu đề của form cho phù hợp với trang Q&A
+        // Hàm tuancele_amp_comment_form() không có tham số,
+        // chúng ta sẽ phải tùy chỉnh nó nếu muốn đổi tiêu đề,
+        // nhưng hiện tại nó sẽ fix được lỗi AMP.
+        tuancele_amp_comment_form();
+    }
+    
     ?>
 </div>

@@ -4,6 +4,9 @@
  *
  * Tải CSS và JS (AMP Components) dành riêng cho Module QAPage.
  * Đảm bảo tính độc lập và không làm nặng các trang khác.
+ *
+ * [FIX] Xóa bỏ amp-recaptcha-input vì script này đã được
+ * tải toàn cục trong header.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -69,16 +72,10 @@ class AMP_QAPage_Assets {
         
         // Module QAPage cần các component sau:
         // 1. amp-form: Cho các form Đặt câu hỏi, Vote, Chấp nhận
-        // 2. amp-recaptcha-input: Bảo mật reCaptcha
         // (Lưu ý: amp-mustache và amp-bind đã được tải global trong header.php)
         
         echo '<script async custom-element="amp-form" src="https://cdn.ampproject.org/v0/amp-form-0.1.js"></script>' . "\n";
         
-        // Chỉ tải reCaptcha script nếu nó được bật trong cài đặt
-        $options = get_option( 'tuancele_recaptcha_settings', [] );
-        $is_enabled = isset( $options['enable_recaptcha'] ) && $options['enable_recaptcha'] === 'on';
-        if ( $is_enabled && ! empty( $options['recaptcha_v3_site_key'] ) ) {
-            echo '<script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>' . "\n";
-        }
+        // [FIX] Đã xóa 4 dòng code tải amp-recaptcha-input
     }
 }

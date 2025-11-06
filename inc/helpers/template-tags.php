@@ -5,6 +5,8 @@
  * Chứa các hàm hiển thị (template tags) được gọi trực tiếp từ các tệp template
  * để render các thành phần giao diện như breadcrumbs, thời gian đọc, v.v.
  * Tệp này là một phần của quá trình tái cấu trúc từ template-helpers.php.
+ *
+ * [FIX] Thêm logic breadcrumbs cho CPT 'qapage_question'.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -15,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Hiển thị thanh điều hướng breadcrumbs.
- * ĐÃ NÂNG CẤP: Hỗ trợ CPT 'property' (Bất động sản).
+ * ĐÃ NÂNG CẤP: Hỗ trợ CPT 'property' (Bất động sản) và 'qapage_question' (Hỏi & Đáp).
  */
 function tuancele_amp_display_breadcrumbs() {
     if ( is_front_page() ) return;
@@ -37,6 +39,15 @@ function tuancele_amp_display_breadcrumbs() {
         if ( $post_type && $post_type->has_archive ) {
             // Lấy tên CPT (Bất động sản) và link archive (/bat-dong-san/)
             echo '<li><a href="' . esc_url( get_post_type_archive_link( 'property' ) ) . '">' . esc_html( $post_type->labels->name ) . '</a></li>';
+        }
+        echo '<li class="current-item">' . get_the_title() . '</li>';
+    
+    } elseif ( is_singular( 'qapage_question' ) ) {
+        // --- [FIX] THÊM LOGIC CHO CPT HỎI & ĐÁP ---
+        $post_type = get_post_type_object( 'qapage_question' );
+        if ( $post_type && $post_type->has_archive ) {
+            // Lấy tên CPT (Hỏi & Đáp) và link archive (/qapage/)
+            echo '<li><a href="' . esc_url( get_post_type_archive_link( 'qapage_question' ) ) . '">' . esc_html( $post_type->labels->name ) . '</a></li>';
         }
         echo '<li class="current-item">' . get_the_title() . '</li>';
         

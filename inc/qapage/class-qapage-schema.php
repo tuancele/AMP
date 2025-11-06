@@ -4,6 +4,10 @@
  *
  * Tạo Schema QAPage, đồng thời gỡ bỏ Schema BlogPosting/Article.
  * Class này đảm bảo trang Câu hỏi & Trả lời có Schema JSON-LD chính xác.
+ *
+ * [FIX V2] Sửa lỗi Schema "author url missing" (Trường "url" bị thiếu).
+ * - Gán URL của bình luận (get_comment_link) làm URL cho tác giả
+ * khi người bình luận là khách (user_id == 0).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -122,9 +126,12 @@ class AMP_QAPage_Schema {
                         'comment'       => [], 
                     ];
                     
-                    // Thêm URL tác giả nếu Answer này được đăng bởi user đã đăng nhập
+                    // [SỬA LỖI V2] Thêm URL cho tác giả (kể cả khách)
                     if ($comment->user_id > 0) {
                          $answer_schema['author']['url'] = get_author_posts_url( $comment->user_id );
+                    } else {
+                         // Gán URL của bình luận làm URL của tác giả (khách)
+                         $answer_schema['author']['url'] = get_comment_link( $comment );
                     }
 
                     // Lưu vào mảng tạm
@@ -148,8 +155,12 @@ class AMP_QAPage_Schema {
                         ],
                     ];
                     
+                    // [SỬA LỖI V2] Thêm URL cho tác giả (kể cả khách)
                     if ($comment->user_id > 0) {
                          $comment_schema['author']['url'] = get_author_posts_url( $comment->user_id );
+                    } else {
+                         // Gán URL của bình luận làm URL của tác giả (khách)
+                         $comment_schema['author']['url'] = get_comment_link( $comment );
                     }
                     
                     // Thêm Comment này vào mảng 'comment' của Answer cha
