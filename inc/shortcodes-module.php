@@ -53,8 +53,9 @@ final class AMP_Shortcodes_Module {
         add_shortcode('amp_imagemap', [ $this, 'amp_imagemap' ]);
         add_shortcode('amp_event_bar', [ $this, 'amp_event_bar' ]);
         
-        // --- [THÊM MỚI] ĐĂNG KÝ SHORTCODE A/B TEST ---
-        add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
+       // Đảm bảo 2 dòng này tồn tại
+    add_shortcode('ab_test_wrapper', [ $this, 'ab_test_wrapper' ]);
+    add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
         
         // Hook tự động chèn quảng cáo nội bộ
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
@@ -77,6 +78,55 @@ final class AMP_Shortcodes_Module {
             return get_amp_form_html($args); // Hàm này nằm trong inc/integrations.php
         }
         return '';
+    }
+
+    /**
+     * [SỬA LỖI A/B TEST V8 - FINAL] SHORTCODE WRAPPER (CHA)
+     * Mô phỏng logic dọn dẹp <p> từ [tien_ich_wrapper]
+     */
+    public function ab_test_wrapper($atts, $content = null) {
+        $atts = shortcode_atts(['experiment' => ''], $atts, 'ab_test_wrapper');
+        if (empty($atts['experiment'])) return '<div class="shortcode-error">Lỗi A/B Test: Thiếu tên "experiment".</div>';
+
+        // Lấy Config JSON
+        $all_configs_json = get_option('tuancele_ab_testing_settings', '{}');
+        $all_configs = json_decode($all_configs_json, true);
+        if (!isset($all_configs[$atts['experiment']])) {
+             return '<div class="shortcode-error">Lỗi A/B Test: Không tìm thấy config cho "' . esc_html($atts['experiment']) . '".</div>';
+        }
+        $experiment_config = $all_configs[$atts['experiment']];
+        $experiment_json = json_encode([$atts['experiment'] => $experiment_config], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // --- QUY TRÌNH DỌN DẸP WP-AUTOP (THEO [tien_ich_wrapper]) ---
+
+        // 1. [FIX V8] Dọn dẹp <p> và <br> mà wpautop
+        // đã thêm VÀO GIỮA các shortcode con [ab_test_variant].
+        // Đây là logic từ [tien_ich_wrapper] và [schema_faq]
+        $content_clean = str_replace( ['<p>', '</p>', '<br />', '<br>'], '', $content );
+        
+        // 2. [FIX V8 - THAM KHẢO HOWTO]
+        // Xử lý dấu nháy cong (wptexturize) có thể làm hỏng shortcode con
+        $curly_quotes = ['“', '”', '‘', '’'];
+        $straight_quotes = ['"', '"', "'", "'"];
+        $content_clean = str_replace( $curly_quotes, $straight_quotes, $content_clean );
+
+        // 3. Chạy do_shortcode trên nội dung đã dọn dẹp.
+        // Thao tác này sẽ gọi hàm ab_test_variant (V8)
+        // và nhận về các chuỗi HTML <div option="...">
+        $variant_html = do_shortcode($content_clean);
+        
+        // 4. Xây dựng HTML
+        ob_start();
+        ?>
+        <amp-experiment>
+            <script type="application/json">
+                <?php echo $experiment_json; ?>
+            </script>
+            <?php echo $variant_html; // In các thẻ <div option="..."> đã hợp lệ ?>
+        </amp-experiment>
+        <?php
+        
+        return ob_get_clean();
     }
 
     /**
@@ -702,24 +752,30 @@ final class AMP_Shortcodes_Module {
     }
 
     /**
-     * [THÊM MỚI] SHORTCODE [ab_test_variant]
-     *
+     * [SỬA LỖI A/B TEST V8 - FINAL] SHORTCODE CON
+     * Mô phỏng logic dọn dẹp <p> từ [schema_howto_step]
      */
     public function ab_test_variant($atts, $content = null) {
-        $atts = shortcode_atts([
-            'experiment' => '', // Tên của thử nghiệm (ví dụ: "form_title_test")
-            'variant'    => '', // Tên của biến thể (ví dụ: "tieu_de_goc")
-        ], $atts, 'ab_test_variant');
+        $atts = shortcode_atts(['variant' => ''], $atts, 'ab_test_variant');
+        if (empty($atts['variant'])) return ''; // Lỗi, trả về rỗng
 
-        if (empty($atts['experiment']) || empty($atts['variant'])) {
-            return '';
-        }
+        // 1. [FIX V8] Dọn dẹp <p> BÊN TRONG shortcode con
+        // (ví dụ: <p>[form_dang_ky]</p>)
+        // Đây là code mô phỏng theo [schema_howto_step]
+        $content_clean = str_replace( ['<p>', '</p>', '<br />', '<br>'], ['', '', "\n", "\n"], $content );
+        
+        // 2. [FIX V8 - THAM KHẢO HOWTO] 
+        // Xử lý dấu nháy cong (wptexturize) một lần nữa
+        // để đảm bảo shortcode lồng nhau (như [form_dang_ky]) không bị lỗi
+        $curly_quotes = ['“', '”', '‘', '’'];
+        $straight_quotes = ['"', '"', "'", "'"];
+        $content_clean = str_replace( $curly_quotes, $straight_quotes, $content_clean );
 
-        // [QUAN TRỌNG] Xử lý các shortcode lồng bên trong (như [form_dang_ky])
-        $processed_content = do_shortcode($content);
-
-        // Trả về thẻ div mà amp-experiment có thể nhận diện
-        return '<div amp-experiment-variant="' . esc_attr($atts['experiment'] . '.' . $atts['variant']) . '">' . $processed_content . '</div>';
+        // 3. Xử lý shortcode lồng bên trong (ví dụ [form_dang_ky])
+        $processed_content = do_shortcode($content_clean);
+        
+        // 4. Trả về HTML <div option="..."> hợp lệ của AMP
+        return '<div option="' . esc_attr($atts['variant']) . '">' . $processed_content . '</div>';
     }
 
 

@@ -55,19 +55,6 @@ $is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_sett
 <body <?php body_class(); ?>>
 
 <?php 
-// // [FIX] Đã xóa 'layout="nodisplay"'
-if ( $is_ab_test_valid ) : 
-?>
-<amp-experiment>
-    <script type="application/json">
-        <?php echo $ab_test_settings; // In trực tiếp JSON đã lưu từ admin ?>
-    </script>
-</amp-experiment>
-<?php 
-endif; 
-// ?>
-
-<?php 
 // $integration_options = get_option('tuancele_integrations_settings', []);
 $ga4_id = $integration_options['ga4_measurement_id'] ?? 'G-KJEEPYVTBR';
 

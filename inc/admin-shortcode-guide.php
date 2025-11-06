@@ -64,40 +64,70 @@ final class AMP_Shortcode_Guide_Module {
                 });
             </script>
 
-            <?php /* === MỤC A/B TESTING === */ ?>
+<?php /* === MỤC A/B TESTING (ĐÃ SỬA LỖI) === */ ?>
             <div class="shortcode-guide-box" style="border-left-color: #663399;">
                 <h2>📊 A/B Testing (Thử nghiệm Biến thể)</h2>
                 <div class="details">
                     <p class="description">Hiển thị các nội dung khác nhau cho người dùng để thử nghiệm. Tính năng này yêu cầu bạn phải thiết lập thử nghiệm trong trang <strong>Cài đặt AMP &gt; A/B Testing</strong> trước.</p>
-                    <p class="note">Bạn phải bọc <strong>TẤT CẢ</strong> các biến thể (A và B) trong shortcode. AMP sẽ tự động chọn một phiên bản để hiển thị cho người dùng và theo dõi qua Google Analytics.</p>
+                    <p class="note">Cách dùng (Đã sửa): Bạn phải bọc <strong>TẤT CẢ</strong> các biến thể (A, B...) bên trong một shortcode <code>[ab_test_wrapper]</code> duy nhất.</p>
+
+                    <p><strong>Cấu trúc chung:</strong></p>
+                    <code><?php echo esc_html('[ab_test_wrapper experiment="ten_thu_nghiem"]
+
+    [ab_test_variant variant="ten_bien_the_A"]
+        [/ab_test_variant]
+
+    [ab_test_variant variant="ten_bien_the_B"]
+        [/ab_test_variant]
+
+[/ab_test_wrapper]'); ?></code>
+
                     <p><strong>Ví dụ: Thử nghiệm tiêu đề của Form:</strong></p>
-                    <code>[ab_test_variant experiment="form_title_test" variant="tieu_de_goc"]
-    [form_dang_ky tieu_de="Đăng Ký Tư Vấn Miễn Phí"]
-[/ab_test_variant]
+                    <code><?php echo esc_html('[ab_test_wrapper experiment="form_title_test"]
 
-[ab_test_variant experiment="form_title_test" variant="tieu_de_moi"]
-    [form_dang_ky tieu_de="Nhận Báo Giá Ngay!"]
-[/ab_test_variant]</code>
-<p><strong>Ví dụ: Thử nghiệm A/B cho Nút bấm (HTML đầy đủ):</strong></p>
-                    <code><?php echo esc_html('[ab_test_variant experiment="cta_button_test" variant="button_xanh"]
-    <a href="/lien-he/" class="bds-details-button" style="background-color: #007bff;">Liên Hệ Tư Vấn</a>
-[/ab_test_variant]
+    [ab_test_variant variant="tieu_de_goc"]
+        [form_dang_ky tieu_de="Đăng Ký Tư Vấn Miễn Phí"]
+    [/ab_test_variant]
 
-[ab_test_variant experiment="cta_button_test" variant="button_do"]
-    <a href="/lien-he/" class="bds-details-button" style="background-color: #dc3545;">Nhận Báo Giá Gấp</a>
-[/ab_test_variant]'); ?></code>
-<p><strong>Ví dụ: Thử nghiệm A/B cho Hình ảnh Banner (HTML đầy đủ):</strong></p>
-                    <code><?php echo esc_html('[ab_test_variant experiment="homepage_banner_test" variant="banner_co_gai"]
-    <amp-img src="/wp-content/uploads/2025/01/banner-co-gai.jpg" width="800" height="400" layout="responsive" alt="Banner Giam Gia"></amp-img>
-[/ab_test_variant]
+    [ab_test_variant variant="tieu_de_moi"]
+        [form_dang_ky tieu_de="Nhận Báo Giá Ngay!"]
+    [/ab_test_variant]
 
-[ab_test_variant experiment="homepage_banner_test" variant="banner_toa_nha"]
-    <amp-img src="/wp-content/uploads/2025/01/banner-toa-nha.jpg" width="800" height="400" layout="responsive" alt="Banner Du An Moi"></amp-img>
-[/ab_test_variant]'); ?></code>
+[/ab_test_wrapper]'); ?></code>
+                    
+                    <p><strong>Ví dụ: Thử nghiệm A/B cho Hình ảnh Banner:</strong></p>
+                    <code><?php echo esc_html('[ab_test_wrapper experiment="homepage_banner_test"]
+
+    [ab_test_variant variant="banner_co_gai"]
+        <amp-img src="/wp-content/uploads/2025/01/banner-co-gai.jpg" width="800" height="400" layout="responsive" alt="Banner Giam Gia"></amp-img>
+    [/ab_test_variant]
+
+    [ab_test_variant variant="banner_toa_nha"]
+        <amp-img src="/wp-content/uploads/2025/01/banner-toa-nha.jpg" width="800" height="400" layout="responsive" alt="Banner Du An Moi"></amp-img>
+    [/ab_test_variant]
+
+[/ab_test_wrapper]'); ?></code>
+                    
                     <table>
-                        <tr><th>Tham số</th><th>Mô tả</th></tr>
-                        <tr><td><code>experiment</code></td><td><strong>(Bắt buộc)</strong> Tên (ID) của thử nghiệm. Tên này phải <strong>khớp</strong> với tên bạn đã tạo trong trang A/B Testing.</td></tr>
-                        <tr><td><code>variant</code></td><td><strong>(Bắt buộc)</strong> Tên của biến thể. Tên này phải <strong>khớp</strong> với tên biến thể bạn đã tạo.</td></tr>
+                        <thead>
+                            <tr>
+                                <th>Shortcode</th>
+                                <th>Tham số</th>
+                                <th>Mô tả</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>[ab_test_wrapper]</code></td>
+                                <td><code>experiment</code></td>
+                                <td><strong>(Bắt buộc)</strong> Tên (ID) của thử nghiệm. Tên này phải <strong>khớp</strong> với tên bạn đã tạo trong trang A/B Testing.</td>
+                            </tr>
+                            <tr>
+                                <td><code>[ab_test_variant]</code></td>
+                                <td><code>variant</code></td>
+                                <td><strong>(Bắt buộc)</strong> Tên của biến thể (ví dụ: "tieu_de_goc"). Tên này phải <strong>khớp</strong> với tên biến thể bạn đã tạo trong JSON.</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>

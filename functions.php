@@ -238,6 +238,10 @@ add_action('init', 'tuancele_register_property_cpt', 0);
  * =========================================================================
  */
 function tuancele_init_functional_modules() {
+
+    // [SỬA LỖI] Khởi chạy Module QAPage MỚI ở đây (bên trong 'init')
+    new AMP_QAPage_Module();
+    
     // Khởi chạy Module Shortcodes
     new AMP_Shortcodes_Module();
 
@@ -264,6 +268,13 @@ function tuancele_init_functional_modules() {
     }
 }
 add_action('init', 'tuancele_init_functional_modules');
+
+/**
+ * =========================================================================
+ * KHỞI CHẠY MODULE QAPAGE MỚI (ĐỘC LẬP)
+ * =========================================================================
+ */
+require_once $theme_dir . '/inc/qapage/qapage-module.php';
 
 /**
  * =========================================================================

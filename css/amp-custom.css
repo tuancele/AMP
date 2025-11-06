@@ -1544,9 +1544,9 @@ li.bypostauthor .comment-author::after {
 
 .internal-ad-v2-body {
     display: grid;
-    grid-template-columns: 100px 1fr; /* Cột ảnh và cột nội dung */
+    grid-template-columns: 100px 1fr; 
     gap: 15px;
-    align-items: center;
+    align-items: start; /* <--- Sửa thành "start" */
     padding: 15px;
 }
 
@@ -1556,6 +1556,8 @@ li.bypostauthor .comment-author::after {
     width: 100%;
     height: 100%;
 }
+
+/* === [SỬA LỖI] CSS CHO QUẢNG CÁO NỘI BỘ === */
 
 .internal-ad-v2-content .ad-title {
     font-size: 1.15rem;
@@ -1568,6 +1570,9 @@ li.bypostauthor .comment-author::after {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
+    /* [FIX] Thêm max-height để buộc trình duyệt tính toán chiều cao */
+    /* (1.15rem * 1.4 line-height * 2 lines) */
+    max-height: 3.22rem; 
 }
 
 .internal-ad-v2-content .ad-excerpt {
@@ -1580,7 +1585,12 @@ li.bypostauthor .comment-author::after {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
+    /* [FIX] Thêm max-height để buộc trình duyệt tính toán chiều cao */
+    /* (0.9rem * 1.6 line-height * 2 lines) */
+    max-height: 2.88rem;
 }
+
+/* === KẾT THÚC SỬA LỖI === */
 
 .internal-ad-v2-content .ad-cta {
     font-size: 0.9rem;
