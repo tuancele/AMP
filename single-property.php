@@ -8,7 +8,9 @@
  * - Đã fix lỗi breadcrumb (hiển thị 1 lần, hỗ trợ CPT).
  * - Đã xóa [tinh_lai_suat] để fix lỗi AMP.
  * - Đã fix logic tạo Schema BĐS, tự động thêm vào @graph.
- * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
+ *
+ * [KHÔI PHỤC V11 GỐC]
+ * - Khôi phục logic animation và position observer cho thanh tiến trình.
  */
 
 get_header();
@@ -25,7 +27,7 @@ get_header();
     ?>
     
     <?php 
-    // Lấy tất cả dữ liệu meta từ CPT
+    // Lấy tất cả các giá trị meta từ CPT
     $post_id = get_the_ID();
     $meta_values = get_post_meta($post_id);
     $get_val = function($key) use ($meta_values) {
@@ -147,8 +149,12 @@ get_header();
 <?php if ( comments_open() || get_comments_number() ) : comments_template(); endif; ?>
 
 <?php
-// --- Logic cho thanh tiến trình đọc (Giống single.php) ---
-// [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
+/**
+ * =========================================================================
+ * [KHÔI PHỤC V11 GỐC] LOGIC CHO THANH TIẾN TRÌNH ĐỌC
+ * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
+ * =========================================================================
+ */
 // Chỉ in các script này nếu Mục lục (TOC) đã được tạo
 if ( ! empty( $GLOBALS['has_toc'] ) && $GLOBALS['has_toc'] === true ) : 
 ?>
@@ -168,6 +174,8 @@ if ( ! empty( $GLOBALS['has_toc'] ) && $GLOBALS['has_toc'] === true ) :
         }
     </script>
 </amp-animation>
+
+<?php // Thêm target="post-content-article" để theo dõi thẻ <article> ?>
 <amp-position-observer
     on="scroll:readingProgressAnimation.seekTo(percent=event.percent)"
     layout="nodisplay"

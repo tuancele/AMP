@@ -8,6 +8,9 @@
  * - Thêm target="post-content-article" vào thẻ <amp-position-observer>
  * để thanh tiến trình theo dõi đúng nội dung bài viết thay vì cả trang.
  * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
+ *
+ * [KHÔI PHỤC V11 GỐC]
+ * - Khôi phục logic animation và position observer cho thanh tiến trình.
  */
 get_header();
 ?>
@@ -46,7 +49,7 @@ get_header();
 <?php
 /**
  * =========================================================================
- * LOGIC MỚI CHO THANH TIẾN TRÌNH ĐỌC (TÍCH HỢP VÀO TOC)
+ * [KHÔI PHỤC V11 GỐC] LOGIC CHO THANH TIẾN TRÌNH ĐỌC
  * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
  * =========================================================================
  */

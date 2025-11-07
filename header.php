@@ -8,6 +8,10 @@
  * - Sửa đổi <amp-sidebar> để chứa <amp-accordion>.
  * - Sử dụng Tuancele_AMP_Sidebar_Walker cho menu di động.
  * - Menu desktop (main-menu) sẽ được xử lý bằng CSS thuần.
+ *
+ * [KHÔI PHỤC V11 GỐC]
+ * - Đã XÓA <amp-state id="tocState">.
+ * - Giữ lại <div id="toc-overlay"> cho accordion.
  */
 
 // [THÊM MỚI] Lấy cài đặt A/B test 1 lần duy nhất ở đầu tệp
@@ -98,9 +102,10 @@ endif;
             {"bannerDismissed": false}
         </script>
     </amp-state>
-    
+
     <amp-geo layout="nodisplay">
         </amp-geo>
+    
     <div id="toc-overlay" on="tap:tocAccordion.toggle" role="button" tabindex="-1" aria-label="Đóng Mục lục" hidden></div>
     
     <amp-sidebar id="my-sidebar" layout="nodisplay" side="left">

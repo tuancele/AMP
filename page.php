@@ -9,6 +9,9 @@
  * - Thêm id="post-content-article" vào thẻ <article>.
  * - Thêm <amp-animation> và <amp-position-observer> vào cuối tệp.
  * [FIX LỖI ANIMATION]: Chỉ in animation script nếu $GLOBALS['has_toc'] là true.
+ *
+ * [KHÔI PHỤC V11 GỐC]
+ * - Khôi phục logic animation và position observer cho thanh tiến trình.
  */
 get_header();
 ?>
@@ -46,7 +49,7 @@ endif;
 <?php
 /**
  * =========================================================================
- * [THÊM MỚI V7.1] LOGIC CHO THANH TIẾN TRÌNH ĐỌC (TÍCH HỢP VÀO TOC)
+ * [KHÔI PHỤC V11 GỐC] LOGIC CHO THANH TIẾN TRÌNH ĐỌC (TÍCH HỢP VÀO TOC)
  * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
  * =========================================================================
  */

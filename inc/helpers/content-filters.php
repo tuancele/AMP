@@ -6,6 +6,11 @@
  * vào (ví dụ: qua hook 'the_content').
  * [FIX LỖI ANIMATION]: Đặt biến $GLOBALS['has_toc'] để ngăn lỗi animation
  * khi trang không có mục lục.
+ *
+ * [KHÔI PHỤC V11 GỐC]
+ * - Khôi phục logic tuancele_stable_toc_handler (chèn H2/H3).
+ * - Khôi phục logic tuancele_build_stable_toc_html (tạo accordion + progress bar).
+ * - Đã XÓA logic V12/V13.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -93,6 +98,7 @@ function tuancele_stable_toc_handler($content) {
 /**
  * Hàm trợ giúp, xây dựng HTML cho Mục lục (TOC).
  * (Hàm này không thay đổi)
+ * [KHÔI PHỤC V11 GỐC]
  */
 function tuancele_build_stable_toc_html($items) {
     ob_start(); ?>
@@ -124,5 +130,5 @@ function tuancele_build_stable_toc_html($items) {
     <?php return ob_get_clean();
 }
 
-// [THÊM MỚI] KÍCH HOẠT HÀM TẠO MỤC LỤC (TOC)
+// [KHÔI PHỤC V11 GỐC] KÍCH HOẠT HÀM TẠO MỤC LỤC (TOC)
 add_filter('the_content', 'tuancele_stable_toc_handler', 9);

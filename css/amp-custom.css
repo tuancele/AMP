@@ -1198,128 +1198,86 @@ li.bypostauthor .comment-author::after {
 .internal-ad-group .internal-ad-v2-container {
     margin: 0; /* Reset margin của item con */
 }
-/* === CSS HOÀN CHỈNH CHO MỤC LỤC (TOC) - FIX LỖI CUỘN TRÊN MOBILE === */
+/* =========================================================================
+   [THAY THẾ V12] CSS CHO THANH TIẾN TRÌNH ĐỘNG (DYNAMIC TOC)
+   ========================================================================= */
 
-/* 1. Container Chính */
-/* -------------------------------------------------- */
-.smart-toc-container {
+/* 1. Container chính (Thanh bar cố định) */
+.dynamic-toc-bar {
     position: sticky;
     top: 5px;
     z-index: 999;
-    background-color: #f0f8ff; 
+    height: 40px;
+    width: 100%;
+    background-color: #f0f8ff;
     border: 1px solid #c9dfff;
-    border-radius: 12px; 
+    border-radius: 8px;
+    box-shadow: 0 6px 15px rgba(0, 115, 230, 0.1);
+    overflow: hidden;
     margin-bottom: 20px;
-    box-shadow: 0 6px 15px rgba(0, 115, 230, 0.1); 
-    
-    /* SỬA 1: Bỏ 'overflow: hidden' để cho phép con cuộn */
-    overflow: visible;
-
-    transition: box-shadow 0.3s ease;
     will-change: transform;
-}
-.smart-toc-container amp-accordion {
-    padding: 0;
+    /* [SỬA LỖI] Xóa 'display: flex' và 'padding' khỏi container */
 }
 
-
-/* 2. Tiêu đề (Đã căn chỉnh) */
-/* -------------------------------------------------- */
-.smart-toc-container .toc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 15px; 
-    cursor: pointer;
-    border-bottom: 1px solid #c9dfff;
-    transition: background-color 0.2s ease;
-}
-.smart-toc-container .toc-header:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-}
-.toc-header-title,
-.toc-header-arrow {
-    margin: 0;
-    padding: 0;
-    line-height: 1; 
-    display: flex;
-    align-items: center;
-}
-.toc-header-title strong {
-    font-size: 1rem;
-    color: var(--mau-chu);
-    font-weight: 700;
-}
-.toc-header-arrow svg {
-    display: block;
-    transition: transform 0.3s ease;
-}
-.smart-toc-container amp-accordion section[expanded] > .toc-header .toc-header-arrow svg {
-    transform: rotate(180deg);
-}
-
-
-/* 3. Danh sách Nội dung (Phần Mở rộng) */
-/* -------------------------------------------------- */
-.toc-full-list {
-    padding: 5px 15px 15px 15px;
-    max-height: none; /* Bỏ giới hạn trên desktop */
-    overflow: visible; /* Bỏ giới hạn trên desktop */
-}
-.toc-full-list ul { 
-    list-style: none; 
-    padding: 0; 
-    margin: 0; 
-}
-.toc-full-list li a {
-    display: block;
-    padding: 8px 12px;
-    text-decoration: none;
-    color: #495057;
-    border-radius: 6px; 
-    font-size: 0.9rem;
-    transition: transform 0.2s ease, background-color 0.2s;
-    transform: translateX(0);
-}
-.toc-full-list li a:hover {
-    background-color: #e0f0ff; 
-    color: #0056b3;
-    transform: translateX(3px); 
-}
-.toc-full-list ul ul { 
-    padding-left: 15px; 
-    margin-top: 5px; 
-    border-left: 2px solid #b3d9ff; 
-}
-
-/* **QUAN TRỌNG**: Áp dụng cuộn và chiều cao MỚI trên màn hình nhỏ */
-@media (max-width: 767px) {
-    .toc-full-list {
-        /* SỬA 2: Tăng chiều cao tối đa để hiển thị nhiều nội dung hơn */
-        max-height: 60vh; /* Tăng từ 40vh lên 60vh (60% chiều cao màn hình) */
-        
-        /* Kích hoạt thanh cuộn dọc khi nội dung dài hơn chiều cao tối đa */
-        overflow-y: auto; 
-        
-        /* Giúp cuộn mượt hơn trên iOS */
-        -webkit-overflow-scrolling: touch; 
-    }
-}
-
-
-/* 4. Lớp phủ (Để đóng TOC khi bấm ra ngoài) */
-/* -------------------------------------------------- */
-#toc-overlay {
-    position: fixed;
+/* 2. Thanh tiến trình (màu xanh) */
+.dynamic-toc-progress {
+    position: absolute;
     top: 0;
     left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #d6eaff;
+    z-index: 1;
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+}
+
+/* 3. Wrapper MỚI cho Tiêu đề động (văn bản) */
+.dynamic-toc-title-wrapper {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(2px);
-    transition: opacity 0.2s ease-in-out;
-    z-index: 998;
+    padding: 0 15px; /* Đặt padding ở đây */
+    min-width: 0; 
 }
+
+/* 4. TẤT CẢ các <span> tiêu đề (dùng chung style) */
+.dynamic-toc-title {
+    /* [SỬA LỖI V12] Bỏ 'position: absolute'. Dùng 'display: none'. */
+    display: none; 
+    align-items: center;
+    width: 100%; /* Chiếm toàn bộ không gian wrapper */
+    height: 100%;
+    
+    /* Style văn bản */
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--mau-chu);
+    
+    /* Xử lý nếu tiêu đề quá dài */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    /* Thời gian mờ ảo (fade) */
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0; /* Mặc định mờ */
+}
+
+/* 5. Tiêu đề MẶC ĐỊNH (is-visible) */
+.dynamic-toc-title.is-visible {
+    display: flex; /* Hiển thị mặc định */
+    opacity: 1;
+    visibility: visible;
+}
+
+/* LƯU Ý: Animation (V11) sẽ ghi đè 'opacity' và 'visibility'.
+   CSS 'is-visible' chỉ để hiển thị tiêu đề mặc định ban đầu.
+*/
+/* === KẾT THÚC CSS DYNAMIC TOC V12 === */
 /* === CSS CHO BÀI VIẾT LIÊN QUAN === */
 .related-posts-section {
     margin: 40px 0;
@@ -1729,7 +1687,7 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
    ========================================================================= */
 
 /* =========================================================================
-   CSS CHO MỤC LỤC TÍCH HỢP THANH TIẾN TRÌNH ĐỌC
+   [KHÔI PHỤC V11 GỐC] CSS CHO MỤC LỤC TÍCH HỢP THANH TIẾN TRÌNH ĐỌC
    ========================================================================= */
 
 /* Container chính của TOC */
@@ -1760,19 +1718,98 @@ body.amp-geo-group-yenbai.amp-geo-group-vn .geo-text-wrapper > .geo-text-for-yen
 }
 
 /* Đảm bảo nội dung của accordion (header, list) nằm trên thanh progress */
-.smart-toc-container .toc-header,
-.smart-toc-container .toc-full-list {
+.smart-toc-container .toc-full-list,
+.smart-toc-container .toc-header {
     position: relative;
     z-index: 2;
     background-color: transparent; /* Quan trọng: để nền trong suốt */
 }
 
-/* Tùy chỉnh nhỏ để link dễ đọc hơn trên nền mới */
+/* Tiêu đề (Header) của Accordion */
+.smart-toc-container amp-accordion{
+    padding: 0;
+}
+.smart-toc-container .toc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 15px; 
+    cursor: pointer;
+    border-bottom: 1px solid #c9dfff;
+    transition: background-color 0.2s ease;
+}
+.smart-toc-container .toc-header:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+.toc-header-title,
+.toc-header-arrow {
+    margin: 0;
+    padding: 0;
+    line-height: 1; 
+    display: flex;
+    align-items: center;
+}
+.toc-header-title strong {
+    font-size: 1rem;
+    color: var(--mau-chu);
+    font-weight: 700;
+}
+
+/* Mũi tên (Xóa khỏi V11 gốc vì không có nút ghim) */
+.toc-header-arrow svg {
+    display: block;
+    transition: transform 0.3s ease;
+}
+.smart-toc-container amp-accordion section[expanded] > .toc-header .toc-header-arrow svg {
+    transform: rotate(180deg);
+}
+
+/* Danh sách Nội dung (Phần Mở rộng) */
+.toc-full-list {
+    padding: 5px 15px 15px 15px;
+    max-height: 40vh; /* [FIX V11] Giới hạn chiều cao và cho phép cuộn */
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+}
+.toc-full-list ul { 
+    list-style: none; 
+    padding: 0; 
+    margin: 0; 
+}
+.toc-full-list li a {
+    display: block;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #495057;
+    border-radius: 6px; 
+    font-size: 0.9rem;
+    transition: transform 0.2s ease, background-color 0.2s;
+    transform: translateX(0);
+}
 .toc-full-list li a:hover {
     background-color: rgba(255, 255, 255, 0.5); /* Nền hover mờ */
     color: #004a8f;
+    transform: translateX(3px); 
+}
+.toc-full-list ul ul { 
+    padding-left: 15px; 
+    margin-top: 5px; 
+    border-left: 2px solid #b3d9ff; 
 }
 
+/* Lớp phủ (Để đóng TOC khi bấm ra ngoài) */
+#toc-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.2s ease-in-out;
+    z-index: 998;
+}
+/* === KẾT THÚC CSS KHÔI PHỤC V11 GỐC === */
 
 /* --- 2. CSS CHO NÚT VỀ ĐẦU TRANG (BACK TO TOP) --- */
 .back-to-top-button {
