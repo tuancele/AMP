@@ -123,3 +123,6 @@ function tuancele_build_stable_toc_html($items) {
     </div>
     <?php return ob_get_clean();
 }
+
+// [THÊM MỚI] KÍCH HOẠT HÀM TẠO MỤC LỤC (TOC)
+add_filter('the_content', 'tuancele_stable_toc_handler', 9);
