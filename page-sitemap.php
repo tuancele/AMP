@@ -4,6 +4,7 @@
  * Template Name: Sơ đồ Website
  * Description: Hiển thị sơ đồ website trực quan cho người dùng.
  *
+ * [FIX V5] - Thêm truy vấn cho CPT 'qapage_question'.
  * [FIX V4] - Thêm 'post_status' => 'publish' cho CPT 'property'
  * để đảm bảo get_posts() tìm thấy CPT được đăng ký có điều kiện.
  */
@@ -72,6 +73,18 @@ if ($is_property_enabled) {
     if (!empty($properties)) {
         $sitemap_groups['Bất động sản'] = $properties;
     }
+}
+
+// === 6. [THÊM MỚI] LẤY CPT HỎI & ĐÁP (QAPAGE) ===
+$qapage_posts = get_posts([
+    'post_type' => 'qapage_question',
+    'posts_per_page' => 50, // Lấy 50 câu hỏi mới nhất
+    'orderby' => 'date',
+    'order' => 'DESC',
+    'post_status' => 'publish'
+]);
+if (!empty($qapage_posts)) {
+    $sitemap_groups['Hỏi & Đáp'] = $qapage_posts;
 }
 
 ?>

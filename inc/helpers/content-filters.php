@@ -55,14 +55,17 @@ add_filter( 'the_content', 'tuancele_append_auto_rating_box' );
 
 /**
  * Xử lý, tạo và chèn Mục lục (TOC).
- * [FIX V2] Sửa lỗi trùng lặp ID h2 bằng preg_replace (limit 1)
+ * [FIX V3] Sửa lỗi trùng lặp ID (khi heading đã có ID)
+ * và mở rộng để hỗ trợ H4.
  */
 function tuancele_stable_toc_handler($content) {
     // [ĐÃ SỬA] Khởi tạo biến global, mặc định là false
     $GLOBALS['has_toc'] = false; 
 
     if (!is_singular() || is_admin() || !in_the_loop() || !is_main_query()) return $content;
-    preg_match_all('/<h([2-3])(.*?)>(.*?)<\/h\1>/i', $content, $matches, PREG_SET_ORDER);
+
+    // [FIX 1] Mở rộng regex để bao gồm H2, H3, và H4
+    preg_match_all('/<h([2-4])(.*?)>(.*?)<\/h\1>/i', $content, $matches, PREG_SET_ORDER);
 
     // Nếu không đủ heading (ít hơn 2), không tạo TOC và trả về nội dung gốc
     if (count($matches) < 2) return $content;
@@ -74,13 +77,17 @@ function tuancele_stable_toc_handler($content) {
     foreach ($matches as $match) {
         $level = $match[1]; $text = strip_tags($match[3]); $id = sanitize_title($text); $temp_id = $id; $counter = 2;
         
+        // [FIX 2] Xóa bỏ bất kỳ thuộc tính 'id' nào đã tồn tại trong $match[2]
+        $attributes = preg_replace('/\s*id\s*=\s*["\'][^"\']*["\']/i', '', $match[2]);
+
         // Kiểm tra ID trùng lặp trong nội dung *đã được sửa đổi*
         while (strpos($new_content, 'id="' . $temp_id . '"') !== false) { 
             $temp_id = $id . '-' . $counter++; 
         }
         $id = $temp_id;
         
-        $new_heading = sprintf('<h%s id="%s"%s>%s</h%s>', $level, esc_attr($id), $match[2], $match[3], $level);
+        // [FIX 3] Sử dụng $attributes đã được làm sạch (thay vì $match[2])
+        $new_heading = sprintf('<h%s id="%s"%s>%s</h%s>', $level, esc_attr($id), $attributes, $match[3], $level);
         
         // [FIX LỖI] Sử dụng preg_replace với giới hạn 1 lần
         // Điều này đảm bảo chỉ thay thế 1 tiêu đề mỗi lần, ngay cả khi chúng giống hệt nhau
@@ -97,15 +104,15 @@ function tuancele_stable_toc_handler($content) {
 
 /**
  * Hàm trợ giúp, xây dựng HTML cho Mục lục (TOC).
- * (Hàm này không thay đổi)
- * [KHÔI PHỤC V11 GỐC]
+ * [FIX V13] Xóa ký tự xuống dòng khỏi HTML output
+ * để ngăn wpautop làm vỡ cấu trúc <amp-accordion>.
  */
 function tuancele_build_stable_toc_html($items) {
     ob_start(); ?>
     <div class="smart-toc-container with-progress-bar">
         <div class="toc-progress-bar-background"></div>
         <amp-accordion expand-single-section id="tocAccordion" on="expand:toc-overlay.show; collapse:toc-overlay.hide">
-            <section>
+            <section> 
                 <header class="toc-header"><span class="toc-header-title"><strong>Mục lục bài viết</strong></span></header>
                 <div class="toc-full-list">
                     <ul>
@@ -127,8 +134,14 @@ function tuancele_build_stable_toc_html($items) {
             </section>
         </amp-accordion>
     </div>
-    <?php return ob_get_clean();
+    <?php 
+    $html = ob_get_clean();
+    
+    // [SỬA LỖI QUAN TRỌNG] Biến toàn bộ HTML thành 1 DÒNG DUY NHẤT
+    // để wpautop không thể chèn thẻ <p> vào được nữa.
+    $html = str_replace(["\r", "\n", "\t"], '', $html);
+    
+    return $html;
 }
-
 // [KHÔI PHỤC V11 GỐC] KÍCH HOẠT HÀM TẠO MỤC LỤC (TOC)
-add_filter('the_content', 'tuancele_stable_toc_handler', 9);
+add_filter('the_content', 'tuancele_stable_toc_handler', 12);

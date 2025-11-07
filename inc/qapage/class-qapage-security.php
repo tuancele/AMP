@@ -118,42 +118,37 @@ class AMP_QAPage_Security {
         return $commentdata;
     }
 
-    /**
-     * Tái sử dụng logic xác thực reCaptcha.
-     * Hàm này được sao chép từ inc/integrations-module.php
-     * để đảm bảo module này hoạt động độc lập.
-     *
-     * @param string $token Token reCaptcha từ form.
-     * @param string $ip Địa chỉ IP của người dùng.
-     * @param string $action Tên action (phải khớp với data-action).
-     * @return bool True nếu hợp lệ, False nếu thất bại.
-     */
-    private function verify_recaptcha_token( $token, $ip, $action ) {
-        if ( empty( $this->recaptcha_secret_key ) || empty( $token ) ) {
-            return false;
-        }
-
-        $response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
-            'body' => [
-                'secret'   => $this->recaptcha_secret_key,
-                'response' => $token,
-                'remoteip' => $ip
-            ],
-        ] );
-
-        if ( is_wp_error( $response ) ) { 
-            error_log( 'QAPage reCAPTCHA WP_Error: ' . $response->get_error_message() );
-            return false; 
-        }
-
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        // Kiểm tra action (tên hành động)
-        if ( ! isset( $body['action'] ) || $body['action'] !== $action ) {
-             error_log( 'QAPage reCAPTCHA Action Mismatch. Expected: ' . $action . ' | Got: ' . ( $body['action'] ?? 'NULL' ) );
-            return false;
-        }
-
-        return isset( $body['success'] ) && $body['success'] === true;
+/**
+ * Tái sử dụng logic xác thực reCaptcha.
+ * [FIX] Đã sửa lỗi: Gỡ bỏ kiểm tra 'action' để đồng bộ với
+ * các module reCaptcha khác của theme (chỉ kiểm tra 'success').
+ *
+ * @param string $token Token reCaptcha từ form.
+ * @param string $ip Địa chỉ IP của người dùng.
+ * @param string $action Tên action (phải khớp với data-action).
+ * @return bool True nếu hợp lệ, False nếu thất bại.
+ */
+private function verify_recaptcha_token( $token, $ip, $action ) {
+    if ( empty( $this->recaptcha_secret_key ) || empty( $token ) ) {
+        return false;
     }
+
+    $response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
+        'body' => [
+            'secret'   => $this->recaptcha_secret_key,
+            'response' => $token,
+            'remoteip' => $ip
+        ],
+    ] );
+
+    if ( is_wp_error( $response ) ) { 
+        error_log( 'QAPage reCAPTCHA WP_Error: ' . $response->get_error_message() );
+        return false; 
+    }
+
+    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    // [ĐÃ SỬA LỖI] Chỉ kiểm tra 'success', bỏ qua 'action'
+    return isset( $body['success'] ) && $body['success'] === true;
+}
 }

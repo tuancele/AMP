@@ -308,7 +308,7 @@ class AMP_QAPage_Ajax {
         }
 
         $recaptcha_token = $_POST['g-recaptcha-response'] ?? '';
-        $user_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_ip = function_exists('get_the_user_ip') ? get_the_user_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
 
         if ( empty( $recaptcha_token ) ) {
             return false;
@@ -317,30 +317,29 @@ class AMP_QAPage_Ajax {
         return $this->verify_recaptcha_token( $recaptcha_token, $user_ip, $action );
     }
     
-    /**
-     * Hàm logic thô để xác thực token (Tái sử dụng từ module cũ).
-     */
-    private function verify_recaptcha_token( $token, $ip, $action ) {
-        $response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
-            'body' => [
-                'secret'   => $this->recaptcha_secret_key,
-                'response' => $token,
-                'remoteip' => $ip
-            ],
-        ] );
-        
-        if ( is_wp_error( $response ) ) { 
-            error_log( 'QAPage AJAX reCAPTCHA WP_Error: ' . $response->get_error_message() );
-            return false; 
-        }
-        
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        
-        if ( ! isset( $body['action'] ) || $body['action'] !== $action ) {
-            error_log( 'QAPage AJAX reCAPTCHA Action Mismatch. Expected: ' . $action . ' | Got: ' . ( $body['action'] ?? 'NULL' ) );
-            return false;
-        }
-        
-        return isset( $body['success'] ) && $body['success'] === true;
+/**
+ * Hàm logic thô để xác thực token (Tái sử dụng từ module cũ).
+ * [FIX] Đã sửa lỗi: Gỡ bỏ kiểm tra 'action' để đồng bộ với
+ * các module reCaptcha khác của theme (chỉ kiểm tra 'success').
+ */
+private function verify_recaptcha_token( $token, $ip, $action ) {
+    $response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
+        'body' => [
+            'secret'   => $this->recaptcha_secret_key,
+            'response' => $token,
+            'remoteip' => $ip
+        ],
+    ] );
+
+    if ( is_wp_error( $response ) ) { 
+        error_log( 'QAPage AJAX reCAPTCHA WP_Error: ' . $response->get_error_message() );
+        return false; 
     }
+
+    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    // [ĐÃ SỬA LỖI] Chỉ kiểm tra 'success', bỏ qua 'action'
+    // để đồng bộ với các module (integrations, comments) khác
+    return isset( $body['success'] ) && $body['success'] === true;
+}
 }
