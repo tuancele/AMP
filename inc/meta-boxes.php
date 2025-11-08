@@ -475,9 +475,10 @@ function tuancele_ajax_load_project_hotspots() {
     $map_id = $image_map_query->posts[0];
     $raw_data = get_post_meta($map_id, '_im_hotspot_data', true);
     
-    // 4. Phân tích (parse) Hotspot
+    // 4. Phân tích (parse) TỌA ĐỘ CSS (CSS Coordinates)
+    // Điều này đảm bảo tên trong dropdown khớp với tên mà frontend shortcode dùng để so sánh
     preg_match_all(
-        '/\[hotspot\s+name=[\"“”](.*?)[\"“”]\s*\]/s', 
+        '/^(.+?):\s*left:\s*([\d.]+)\%;\s*top:\s*([\d.]+)\%;/im', 
         $raw_data,
         $matches
     );
@@ -485,7 +486,7 @@ function tuancele_ajax_load_project_hotspots() {
     $hotspots = [];
     if (!empty($matches[1])) {
         foreach ($matches[1] as $name) {
-            $hotspots[] = trim($name);
+            $hotspots[] = trim($name); // Lấy ra tên key từ CSS (ví dụ: can-A1)
         }
         $hotspots = array_unique($hotspots); 
         sort($hotspots); 

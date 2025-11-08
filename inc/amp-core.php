@@ -289,6 +289,7 @@ function tuancele_register_conditional_assets() {
             // [SỬA LỖI] Đã vô hiệu hóa dòng này vì script được tải toàn cục trong header.php
             // ['element' => 'amp-lightbox', 'src' => 'https://cdn.ampproject.org/v0/amp-lightbox-0.1.js'],
         ],
+        
         'ab_test_variant' => [
             ['element' => 'amp-experiment', 'src' => 'https://cdn.ampproject.org/v0/amp-experiment-0.1.js']
         ],

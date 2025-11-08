@@ -282,13 +282,14 @@ new AMP_QAPage_Module();
 
 /**
  * =========================================================================
- * NÂNG CẤP LOG V4.0 - TẠO BẢNG CSDL KHI KÍCH HOẠT THEME
+ * NÂNG CẤP LOG V5.4 - TẠO BẢNG CSDL KHI KÍCH HOẠT THEME
+ * - Đã thêm cột 'user_agent' và 'referer'.
  * =========================================================================
  */
 
 /**
  * Hàm này sẽ được gọi khi theme được kích hoạt (hoặc kích hoạt lại)
- * để tạo bảng CSDL tùy chỉnh cho việc ghi log.
+ * để tạo/cập nhật bảng CSDL tùy chỉnh cho việc ghi log.
  */
 function tuancele_create_visitor_log_table() {
     global $wpdb;
@@ -299,7 +300,8 @@ function tuancele_create_visitor_log_table() {
     // Lấy collation của CSDL (ví dụ: utf8mb4_unicode_ci)
     $charset_collate = $wpdb->get_charset_collate();
 
-    // Câu lệnh SQL để tạo bảng
+    // Câu lệnh SQL để tạo/cập nhật bảng
+    // [ĐÃ NÂNG CẤP] Thêm 2 cột mới và 2 index mới
     $sql = "CREATE TABLE $table_name (
         id BIGINT(20) NOT NULL AUTO_INCREMENT,
         visit_time DATETIME NOT NULL,
@@ -309,14 +311,18 @@ function tuancele_create_visitor_log_table() {
         org VARCHAR(255) NOT NULL,
         country_code CHAR(5) NOT NULL,
         request_uri VARCHAR(1024) NOT NULL,
+        user_agent VARCHAR(1024) NOT NULL,
+        referer VARCHAR(1024) NOT NULL,
         
         PRIMARY KEY  (id),
         INDEX time_idx (visit_time),
         INDEX ip_idx (ip_address),
-        INDEX uri_idx (request_uri(191))
+        INDEX uri_idx (request_uri(191)),
+        INDEX ua_idx (user_agent(191)),
+        INDEX ref_idx (referer(191))
     ) $charset_collate;";
 
-    // Yêu cầu WordPress thực thi câu lệnh SQL
+    // Yêu cầu WordPress thực thi câu lệnh SQL (dbDelta sẽ tự động thêm cột nếu thiếu)
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 }

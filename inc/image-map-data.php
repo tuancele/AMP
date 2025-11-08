@@ -380,7 +380,7 @@ function tuancele_enqueue_image_map_scripts($hook) {
                     let content = textarea.val();
                     
                     // Regex để tìm tất cả các dòng định nghĩa tọa độ (ví dụ: 'unit-01: left: ...')
-                    const coordRegex = /^(unit-\d+|[a-z0-9-]+)\s*:/gim;
+                    const coordRegex = /^(.+?)\s*:/gim;
                     const matches = content.match(coordRegex);
                     
                     if (!matches || matches.length === 0) {

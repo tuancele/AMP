@@ -330,6 +330,97 @@ final class AMP_Shortcode_Guide_Module {
                 </div>
             </div>
 
+        <?php /* === MỤC TIẾN ĐỘ THI CÔNG (ĐÃ CẬP NHẬT VỚI SCHEMA) === */ ?>
+            <div class="shortcode-guide-box" style="border-left-color: #0d6efd;">
+                <h2>🗓️ Timeline (Tiến độ thi công) + Schema</h2>
+                <div class="details">
+                    <p class="description">Hiển thị một timeline (dòng thời gian) trực quan, lý tưởng cho việc trình bày tiến độ dự án. Tự động thêm Schema `Event` cho Google.</p>
+                    <p class="note">Bạn phải bọc các thẻ <code>[timeline_item]</code> bên trong một thẻ <code>[timeline]</code>.</p>
+                    
+                    <p><strong>Cú pháp mẫu (Đã cập nhật):</strong></p>
+                    <code><?php echo esc_html('[timeline]
+    [timeline_item date="Quý 4 - 2025" 
+                   title="Hoàn thành & Bàn giao" 
+                   status="completed" 
+                   schema_date="2025-10-01"]
+        <p>Nội dung mô tả cho mốc thời gian này.</p>
+        [amp_slider ids="123, 124"]
+    [/timeline_item]
+
+    [timeline_item date="Quý 3 - 2025" 
+                   title="Hoàn thiện cảnh quan" 
+                   status="ongoing" 
+                   schema_date="2025-07-01"]
+        <p>Đang trong giai đoạn hoàn thiện cuối cùng.</p>
+    [/timeline_item]
+
+    [timeline_item date="Quý 1 - 2025" 
+                   title="Cất nóc dự án" 
+                   status="completed" 
+                   schema_date="2025-01-15"]
+        <p>Toàn bộ các tháp đã được cất nóc thành công.</p>
+    [/timeline_item]
+
+    [timeline_item date="Quý 2 - 2024" 
+                   title="Khởi công móng cọc" 
+                   status="completed" 
+                   schema_date="2024-04-01"]
+        <p>Dự án chính thức khởi công phần móng và hầm.</p>
+    [/timeline_item]
+[/timeline]'); ?></code>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Shortcode</th>
+                                <th>Tham số</th>
+                                <th>Mô tả</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>[timeline]</code></td>
+                                <td>(Không có)</td>
+                                <td>Thẻ bọc ngoài, tạo ra đường kẻ dọc của timeline.</td>
+                            </tr>
+                            <tr>
+                                <td><code>[timeline_item]</code></td>
+                                <td><code>date</code></td>
+                                <td>Văn bản hiển thị cho mốc thời gian (Ví dụ: "Quý 4 - 2025").</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><code>title</code></td>
+                                <td>Tiêu đề chính của mốc thời gian (Ví dụ: "Cất nóc dự án").</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><code>status</code></td>
+                                <td>
+                                    Kiểm soát màu sắc của mốc. Các giá trị hợp lệ:
+                                    <ul>
+                                        <li><code>completed</code> (Màu xanh lá)</li>
+                                        <li><code>ongoing</code> (Màu xanh dương, có nhấp nháy)</li>
+                                        <li><code>pending</code> (Mặc định - Màu xám)</li>
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><code>image_id</code></td>
+                                <td>(Tùy chọn) ID của một ảnh từ Media Library để hiển thị.</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><code>schema_date</code></td>
+                                <td><strong>(Quan trọng cho SEO)</strong> Ngày tháng ở định dạng ISO <code>YYYY-MM-DD</code>. Dùng để cung cấp dữ liệu cho Google Schema.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="description">Bạn có thể chèn các shortcode khác (như <code>[amp_slider]</code>) vào bên trong nội dung của <code>[timeline_item]</code>.</p>
+                </div>
+            </div>    
+
         </div>
         <?php
     }

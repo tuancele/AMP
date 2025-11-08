@@ -3,7 +3,10 @@
  * inc/helpers/logging.php
  *
  * Chứa tất cả logic liên quan đến việc ghi log IP, tra cứu IP và xoay vòng log.
- * PHIÊN BẢN 4.0 (Phương án 1): Chuyển sang ghi log vào CSDL tùy chỉnh.
+ *
+ * [NÂNG CẤP V5.4]
+ * - Đã thêm 'user_agent' và 'referer' vào logic thu thập và ghi log.
+ * - Đã tăng thời gian lưu log (days_to_keep) từ 7 lên 10 ngày.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -14,7 +17,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Lấy địa chỉ IP chính xác của người dùng.
- * (Không thay đổi)
  */
 function get_the_user_ip() {
     $ip = 'Unknown';
@@ -26,19 +28,20 @@ function get_the_user_ip() {
 }
 
 /**
- * [OPTIMIZED] Lên lịch ghi log IP thay vì thực hiện đồng bộ.
- * (Không thay đổi)
+ * [NÂNG CẤP V5.4] Lên lịch ghi log (đã bổ sung ua & ref)
  */
 function log_visitor_data() {
     if (is_user_logged_in() || (isset($_SERVER['HTTP_USER_AGENT']) && preg_match('/bot|crawl|slurp|spider|mediapartners/i', $_SERVER['HTTP_USER_AGENT'])) || wp_doing_ajax() || wp_doing_cron()) {
         return;
     }
 
-    // Thu thập dữ liệu cơ bản (rất nhanh)
+    // [ĐÃ NÂNG CẤP] Thu thập thêm User-Agent và Referer
     $log_data = [
-        'time' => time(), // Giữ lại time() để tương thích với hook
+        'time' => time(),
         'ip'   => get_the_user_ip(),
-        'uri'  => esc_url_raw($_SERVER['REQUEST_URI'] ?? '/')
+        'uri'  => esc_url_raw($_SERVER['REQUEST_URI'] ?? '/'),
+        'ua'   => $_SERVER['HTTP_USER_AGENT'] ?? 'N/A', // [MỚI]
+        'ref'  => $_SERVER['HTTP_REFERER'] ?? 'N/A'    // [MỚI]
     ];
 
     // Lên lịch cho một tác vụ chạy nền ngay lập tức
@@ -49,48 +52,44 @@ function log_visitor_data() {
 add_action('template_redirect', 'log_visitor_data');
 
 /**
- * [NÂNG CẤP v4.0] Hàm này được gọi bởi WP-Cron để ghi log vào BẢNG CSDL.
- * Thay thế logic file_put_contents() bằng $wpdb->insert().
+ * [NÂNG CẤP V5.4] Hàm này được gọi bởi WP-Cron để ghi log vào BẢNG CSDL
+ * (Đã bổ sung ua & ref)
  */
 function tuancele_log_visitor_data_async($log_data) {
     global $wpdb;
-    // Tên bảng CSDL tùy chỉnh mà chúng ta đã tạo
     $table_name = $wpdb->prefix . 'visitor_logs'; 
 
-    // 1. Gọi hàm tra cứu API (vẫn giữ nguyên từ Phương án 1)
     $ip_details = get_ip_info_from_api($log_data['ip']);
-
-    // 2. Trích xuất và làm sạch dữ liệu
     $location = trim(($ip_details['city'] ?? 'N/A') . ', ' . ($ip_details['country'] ?? 'N/A'), ', ');
     
+    // [ĐÃ NÂNG CẤP] Thêm 2 trường mới vào mảng data
     $data_to_insert = [
-        'visit_time'   => current_time('mysql'), // Chuyển sang định dạng DATETIME của CSDL
+        'visit_time'   => current_time('mysql'),
         'ip_address'   => $log_data['ip'],
         'location'     => sanitize_text_field($location),
         'isp'          => sanitize_text_field($ip_details['isp'] ?? 'N/A'),
         'org'          => sanitize_text_field($ip_details['org'] ?? 'N/A'),
         'country_code' => sanitize_text_field($ip_details['countryCode'] ?? 'N/A'),
         'request_uri'  => esc_url_raw($log_data['uri']),
+        'user_agent'   => sanitize_text_field($log_data['ua']),
+        'referer'      => esc_url_raw($log_data['ref'])
     ];
     
-    // 3. Ghi vào CSDL
     $wpdb->insert($table_name, $data_to_insert);
 }
 add_action('tuancele_async_log_visitor', 'tuancele_log_visitor_data_async', 10, 1);
 
 /**
- * [NÂNG CẤP v4.0] Thực thi việc xoay vòng (xóa) log cũ khỏi CSDL.
- * Thay thế logic nén file .txt bằng lệnh DELETE SQL.
+ * [NÂNG CẤP] Thực thi việc xoay vòng log (đổi 7 -> 10 ngày)
  */
 function tuancele_perform_log_rotation() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'visitor_logs';
     
-    // Giữ lại 7 ngày log gần nhất (bạn có thể thay đổi số này)
-    $days_to_keep = 7; 
+    // Giữ lại 10 ngày log gần nhất (theo yêu cầu)
+    $days_to_keep = 10; // <-- ĐÃ THAY ĐỔI
     $delete_before_date = date('Y-m-d H:i:s', strtotime("-$days_to_keep days"));
     
-    // Chạy lệnh DELETE để xóa các dòng log cũ hơn 7 ngày
     $wpdb->query(
         $wpdb->prepare(
             "DELETE FROM $table_name WHERE visit_time < %s",
@@ -98,12 +97,12 @@ function tuancele_perform_log_rotation() {
         )
     );
 }
-// Đăng ký lịch chạy hằng ngày (không thay đổi)
+// Đăng ký lịch chạy hằng ngày
 if (!wp_next_scheduled('tuancele_daily_log_rotation_event')) { wp_schedule_event(strtotime('02:00:00'), 'daily', 'tuancele_daily_log_rotation_event'); }
 add_action('tuancele_daily_log_rotation_event', 'tuancele_perform_log_rotation');
 
 /**
- * Tra cứu thông tin chi tiết của IP (vẫn được giữ lại cho my-ip.php và hàm async)
+ * Tra cứu thông tin chi tiết của IP
  * (Không thay đổi)
  */
 function get_ip_info_from_api($ip) {
@@ -121,24 +120,24 @@ function get_ip_info_from_api($ip) {
             'country' => $data['country']??'N/A', 
             'countryCode' => $data['countryCode']??'N/A', 
             'region' => $data['regionName']??'N/A', 
-            'city' => $data['city']??'N/A', // Thêm city để xây dựng location
+            'city' => $data['city']??'N/A',
             'timezone' => str_replace('_', ' ', $data['timezone']??'N/A'), 
             'continent' => $data['continent']??'N/A' 
         ];
-        set_transient($cache_key, $ip_details, HOUR_IN_SECONDS); // Cache 1 giờ
+        set_transient($cache_key, $ip_details, HOUR_IN_SECONDS);
         return $ip_details;
     }
     return [];
 }
 
 /**
- * [NÂNG CẤP v4.0] Hiển thị thanh debug trạng thái BẢNG CSDL (thay vì file).
+ * Hiển thị thanh debug
+ * (Không thay đổi)
  */
 function add_logging_debugger() {
     if (current_user_can('manage_options')) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'visitor_logs';
-        // Kiểm tra xem bảng có tồn tại không
         $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
         
         echo "<div style='position: fixed; bottom: 0; left: 0; width: 100%; background: #222; color: white; padding: 10px; z-index: 99999; font-family: monospace; font-size: 12px; text-align: center;'><strong>[DEBUGGER - ADMIN ONLY]</strong> Bảng Log: <code>" . esc_html($table_name) . "</code> | Trạng thái: <strong style='color: " . ($table_exists ? 'green' : 'red') . ";'>" . ($table_exists ? 'TỒN TẠI' : 'KHÔNG TÌM THẤY (Hãy kích hoạt lại theme)') . "</strong></div>";
@@ -147,24 +146,18 @@ function add_logging_debugger() {
 add_action('wp_footer', 'add_logging_debugger');
 
 // =========================================================================
-// [MỚI] MODULE TƯỜNG LỬA IP (GATEKEEPER & DETECTIVE)
+// MODULE TƯỜNG LỬA IP (GATEKEEPER & DETECTIVE) - SỬ DỤNG TRANSIENT GỐC
 // =========================================================================
 
 /**
  * 1. BỘ LỌC CỔNG (THE GATEKEEPER)
- * Chạy đồng bộ, kiểm tra IP của khách truy cập
- * và chặn ngay lập tức nếu có trong danh sách.
+ * Giữ nguyên logic gốc (sử dụng transient) theo yêu cầu của bạn.
  */
 function tuancele_ip_blocker_gatekeeper() {
-    // Lấy cài đặt (chỉ 1 lần)
     $options = get_option('tuancele_integrations_settings', []);
-    
-    // Nếu tính năng bị tắt, dừng ngay
     if ( !isset($options['enable_ip_blocker']) || $options['enable_ip_blocker'] !== 'on' ) {
         return;
     }
-
-    // Không chặn Admin đã đăng nhập
     if ( current_user_can('manage_options') ) {
         return;
     }
@@ -176,9 +169,8 @@ function tuancele_ip_blocker_gatekeeper() {
     if ( !empty($whitelist_raw) ) {
         $whitelist = preg_split('/[\r\n]+/', $whitelist_raw, -1, PREG_SPLIT_NO_EMPTY);
         $whitelist = array_map('trim', $whitelist);
-        
         if ( in_array($user_ip, $whitelist) ) {
-            return; // IP an toàn, cho phép truy cập
+            return; 
         }
     }
 
@@ -196,7 +188,7 @@ function tuancele_ip_blocker_gatekeeper() {
     // 4. Gộp 2 danh sách cấm
     $full_blacklist = array_merge($manual_blacklist, $auto_blacklist);
     if ( empty($full_blacklist) ) {
-        return; // Không có IP nào bị cấm
+        return; 
     }
 
     // 5. Chặn
@@ -208,13 +200,12 @@ function tuancele_ip_blocker_gatekeeper() {
         );
     }
 }
-// Chạy "Bộ lọc Cổng" ở mức ưu tiên 1 (sớm nhất có thể)
 add_action('init', 'tuancele_ip_blocker_gatekeeper', 1);
 
 
 /**
  * 2. BỘ PHÂN TÍCH (THE DETECTIVE)
- * Chạy ngầm (Cron) mỗi giờ để phân tích log và cập nhật danh sách cấm.
+ * Giữ nguyên logic gốc (sử dụng transient).
  */
 
 // 2a. Đăng ký lịch chạy cron (mỗi giờ)
@@ -230,32 +221,24 @@ function tuancele_run_log_analyzer() {
     global $wpdb;
     $options = get_option('tuancele_integrations_settings', []);
     
-    // Nếu tính năng tắt, xóa transient (nếu có) và dừng lại
     if ( !isset($options['enable_ip_blocker']) || $options['enable_ip_blocker'] !== 'on' ) {
         delete_transient('tuancele_auto_blocklist');
         return;
     }
 
-    // Lấy ngưỡng chặn, đảm bảo an toàn
     $threshold = absint($options['blocking_threshold'] ?? 500);
-    if ($threshold < 50) $threshold = 50; // Đặt ngưỡng tối thiểu 50 để tránh tự chặn nhầm
+    if ($threshold < 50) $threshold = 50; 
 
     $table_name = $wpdb->prefix . 'visitor_logs';
-    $time_sql = 'NOW() - INTERVAL 1 HOUR'; // Quét log trong 1 giờ qua
+    $time_sql = 'NOW() - INTERVAL 1 HOUR'; 
 
-    // Lấy Whitelist để loại trừ khỏi truy vấn
     $whitelist_raw = $options['ip_manual_whitelist'] ?? '';
     $whitelist = preg_split('/[\r\n]+/', $whitelist_raw, -1, PREG_SPLIT_NO_EMPTY);
     $whitelist = array_map('trim', $whitelist);
-    
-    // Thêm các IP local và IP hợp lệ vào Whitelist (để không bao giờ tự động chặn)
     $default_whitelist = ['127.0.0.1', '::1'];
     $whitelist = array_merge($whitelist, $default_whitelist);
-    
     $placeholders = implode( ', ', array_fill( 0, count( $whitelist ), '%s' ) );
     
-    // Câu SQL để tìm các IP có số request > $threshold trong 1 giờ qua
-    // VÀ không nằm trong whitelist
     $sql = $wpdb->prepare(
         "SELECT ip_address
         FROM {$table_name}
@@ -268,10 +251,8 @@ function tuancele_run_log_analyzer() {
 
     $bad_ips = $wpdb->get_col($sql);
 
-    // Lưu kết quả vào transient, cache trong 1 giờ
-    // "Bộ lọc Cổng" sẽ đọc transient này
+    // Lưu kết quả vào transient
     set_transient('tuancele_auto_blocklist', $bad_ips, HOUR_IN_SECONDS);
     
-    // Ghi lại thời gian chạy lần cuối (để hiển thị trong admin)
     update_option('tuancele_ip_analyzer_last_run', time());
 }

@@ -45,6 +45,10 @@ final class AMP_Shortcodes_Module {
        // Đảm bảo 2 dòng này tồn tại
     add_shortcode('ab_test_wrapper', [ $this, 'ab_test_wrapper' ]);
     add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
+    // --- [THÊM MỚI TẠI ĐÂY] ---
+    add_shortcode('timeline', [ $this, 'timeline_wrapper' ]);
+    add_shortcode('timeline_item', [ $this, 'timeline_item' ]);
+    // --- [KẾT THÚC THÊM MỚI] ---
         
         // Hook tự động chèn quảng cáo nội bộ
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
@@ -814,5 +818,113 @@ final class AMP_Shortcodes_Module {
         return '<div option="' . esc_attr($atts['variant']) . '">' . $processed_content . '</div>';
     }
 
+    /**
+ * =========================================================================
+ * SHORTCODES CHO TIẾN ĐỘ THI CÔNG
+ * =========================================================================
+ */
 
+/**
+ * SHORTCODE [timeline] (Wrapper)
+ * Bọc ngoài các item, tạo layout chung.
+ */
+public function timeline_wrapper($atts, $content = null) {
+    // Dọn dẹp các thẻ <p> tự động của WordPress
+    $content = str_replace( ['<p>', '</p>', '<br />', '<br>'], '', $content );
+    $output = do_shortcode($content);
+
+    // Trả về container với đường line dọc
+    return '<div class="construction-timeline-container">' . $output . '</div>';
+}
+
+/**
+     * SHORTCODE [timeline_item] (Con)
+     * Tạo một mốc trên timeline.
+     * [NÂNG CẤP] Tự động tạo và thêm Schema Event vào $GLOBALS.
+     */
+    public function timeline_item($atts, $content = null) {
+        // Các thuộc tính shortcode cho phép:
+        $atts = shortcode_atts([
+            'date'         => 'Chưa cập nhật',
+            'title'        => 'Cột mốc mới',
+            'image_id'     => '', // ID của ảnh trong Media Library
+            'status'       => 'pending', // Trạng thái: 'completed', 'ongoing', 'pending'
+            'schema_date'  => '', // [MỚI] Ngày tháng theo chuẩn ISO (2025-10-01)
+        ], $atts, 'timeline_item');
+
+        // Xử lý ảnh (nếu có)
+        $image_html = '';
+        $image_url = ''; // Biến để lưu URL ảnh cho schema
+        if ( ! empty($atts['image_id']) ) {
+            // Lấy ảnh kích thước 'large' (bạn có thể đổi sang 'medium' nếu muốn)
+            $image_data = wp_get_attachment_image_src( $atts['image_id'], 'large' ); 
+            if ($image_data) {
+                $image_url = esc_url($image_data[0]); // Lưu URL cho schema
+                $image_alt = get_post_meta( $atts['image_id'], '_wp_attachment_image_alt', true ) ?: $atts['title'];
+                $image_html = '<div class="timeline-image">
+                                <amp-img src="' . $image_url . '" 
+                                         width="' . esc_attr($image_data[1]) . '" 
+                                         height="' . esc_attr($image_data[2]) . '" 
+                                         layout="responsive" 
+                                         alt="' . esc_attr($image_alt) . '"></amp-img>
+                              </div>';
+            }
+        }
+
+        // Xử lý nội dung mô tả (cho phép dùng shortcode con bên trong)
+        $content_html = wpautop( do_shortcode( $content ) );
+        
+        // Lấy class CSS dựa trên trạng thái
+        $status_class = 'status-' . sanitize_html_class($atts['status']); // vd: 'status-completed'
+
+        // --- [LOGIC SCHEMA MỚI] ---
+        // 1. Tạo schema Event cơ bản
+        $schema = [
+            '@type'       => 'Event',
+            'name'        => esc_html($atts['title']),
+            'description' => wp_strip_all_tags($content_html),
+        ];
+
+        // 2. Map trạng thái (status) sang EventStatusType
+        $status_map = [
+            'completed' => 'https://schema.org/EventCompleted',
+            'ongoing'   => 'https://schema.org/EventScheduled', // Đang diễn ra, vẫn là "Scheduled"
+            'pending'   => 'https://schema.org/EventScheduled', // Sắp diễn ra
+        ];
+        $schema['eventStatus'] = $status_map[$atts['status']] ?? $status_map['pending'];
+
+        // 3. Thêm ngày bắt đầu (nếu có)
+        if ( ! empty($atts['schema_date']) ) {
+            $schema['startDate'] = $atts['schema_date'];
+        }
+
+        // 4. Thêm ảnh (nếu có)
+        if ( ! empty($image_url) ) {
+            $schema['image'] = $image_url;
+        }
+
+        // 5. Thêm vào mảng schema toàn cục
+        // Tệp inc/seo-module.php sẽ tự động đọc biến $GLOBALS này
+        if ( ! isset( $GLOBALS['page_specific_schema'] ) ) {
+            $GLOBALS['page_specific_schema'] = [];
+        }
+        $GLOBALS['page_specific_schema'][] = $schema;
+        // --- [KẾT THÚC LOGIC SCHEMA] ---
+
+        ob_start();
+        ?>
+        <div class="timeline-item <?php echo $status_class; ?>">
+            <div class="timeline-dot"></div>
+            <div class="timeline-date"><?php echo esc_html($atts['date']); ?></div>
+            <div class="timeline-content">
+                <h4><?php echo esc_html($atts['title']); ?></h4>
+                <?php if (!empty($image_html)) echo $image_html; ?>
+                <div class="timeline-description">
+                    <?php echo $content_html; // Đã wpautop ?>
+                </div>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
 } // Kết thúc Class
