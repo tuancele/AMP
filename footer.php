@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
  * footer.php - Phiên bản đã được tối ưu UX, tích hợp các nút nổi và nút về đầu trang.

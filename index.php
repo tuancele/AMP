@@ -15,7 +15,7 @@ get_header();
                     <a href="<?php the_permalink(); ?>" aria-label="<?php the_title_attribute(); ?>">
                         <?php 
                         // the_post_thumbnail sẽ được filter sang amp-img trong functions.php
-                        the_post_thumbnail('medium_large', array(
+                        the_post_thumbnail('archive-thumb', array(
                             'width'  => 600, 
                             'height' => 300, 
                         )); 

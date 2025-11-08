@@ -138,7 +138,6 @@ function tuancele_build_stable_toc_html($items) {
     $html = ob_get_clean();
     
     // [SỬA LỖI QUAN TRỌNG] Biến toàn bộ HTML thành 1 DÒNG DUY NHẤT
-    // để wpautop không thể chèn thẻ <p> vào được nữa.
     $html = str_replace(["\r", "\n", "\t"], '', $html);
     
     return $html;

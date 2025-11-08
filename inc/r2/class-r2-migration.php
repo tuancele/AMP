@@ -56,9 +56,19 @@ final class Tuancele_R2_Migration {
 
         wp_schedule_single_event(time(), 'tuancele_r2_run_migration_batch');
         
-        // [SỬA LỖI] Kích hoạt cron
+        // [FIX LỖI LOCAL]
+        // Thay vì lập lịch và hy vọng cron trigger hoạt động,
+        // chúng ta sẽ chạy batch đầu tiên ngay lập tức (đồng bộ) trong
+        // chính AJAX request này.
+        $this->process_batch();
+
+        // Hàm process_batch() ở trên sẽ tự động lập lịch cho batch_tiếp_theo (nếu cần).
+        // Chúng ta vẫn cần trigger cron, nhưng bây giờ là để chạy batch thứ 2,
+        // không phải batch đầu tiên.
         $this->trigger_cron();
-        
+
+        // Trả về kết quả ngay. JS sẽ tự động
+        // gọi `updateStatus` và thấy 5 file đã được xử lý.
         wp_send_json_success();
     }
 

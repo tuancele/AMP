@@ -58,7 +58,7 @@ $pillar_id = get_term_meta( $category->term_id, 'silo_pillar_id', true );
                     <?php if ( has_post_thumbnail() ) : ?>
                     <div class="image-wrapper">
                         <a href="<?php the_permalink(); ?>" aria-label="<?php the_title_attribute(); ?>">
-                            <?php the_post_thumbnail( 'medium_large' ); ?>
+                            <?php the_post_thumbnail( 'archive-thumb' ); ?>
                         </a>
                     </div>
                     <?php endif; ?>

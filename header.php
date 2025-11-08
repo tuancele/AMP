@@ -12,9 +12,13 @@
  * [KHÔI PHỤC V11 GỐC]
  * - Đã XÓA <amp-state id="tocState">.
  * - Giữ lại <div id="toc-overlay"> cho accordion.
+ *
+ * [NÂNG CẤP V19 - REVERT TO STICKY]
+ * - Đã XÓA toàn bộ logic Smart Header (amp-animation, amp-position-observer, wrapper)
+ * - Header sẽ quay lại trạng thái sticky mặc định.
  */
 
-// [THÊM MỚI] Lấy cài đặt A/B test 1 lần duy nhất ở đầu tệp
+// Lấy cài đặt A/B test 1 lần duy nhất ở đầu tệp
 $ab_test_settings = get_option('tuancele_ab_testing_settings', '');
 // Kiểm tra xem có phải là JSON hợp lệ không (đơn giản)
 $is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_settings), 0, 1 ) === '{' && substr( trim($ab_test_settings), -1 ) === '}' );
@@ -50,13 +54,17 @@ $is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_sett
     <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
     
     <?php 
-    // if ( $is_ab_test_valid ) {
+    if ( $is_ab_test_valid ) {
         echo '<script async custom-element="amp-experiment" src="https://cdn.ampproject.org/v0/amp-experiment-0.1.js"></script>' . "\n";
+    }
     ?>
     
     <?php wp_head(); ?>
 </head>
+
 <body <?php body_class(); ?>>
+
+<?php // [ĐÃ XÓA] 2 khối <amp-animation> ?>
 
 <?php 
 // $integration_options = get_option('tuancele_integrations_settings', []);
@@ -95,7 +103,6 @@ if ( ! empty( $ga4_id ) ) :
 <?php 
 endif; 
 // ?>
-
 
     <amp-state id="pwaStatus">
         <script type="application/json">
@@ -149,6 +156,7 @@ endif;
         </div>
     </div>
     
+    <?php // [ĐÃ XÓA] Wrapper .smart-header-wrapper ?>
     <header id="page-top">
         <div class="container header-container">
             <div class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a></div>
@@ -172,4 +180,9 @@ endif;
     <?php 
     echo do_shortcode('[amp_event_bar]');
     ?>
+    
+    <?php // [ĐÃ XÓA] <amp-position-observer> của Smart Header ?>
+
+    <?php // [ĐÃ XÓA] <div id="btt-trigger"> ?>
+
     <div class="site-content-wrapper"><main class="container">

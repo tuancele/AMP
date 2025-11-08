@@ -53,7 +53,8 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
             $output .= sprintf( '<li id="comment-%s" %s itemscope itemtype="https://schema.org/Answer" itemprop="suggestedAnswer" [class]="\'qapage-answer\' + (answerState' . $comment_id_str . '.is_accepted ? \' accepted-answer\' : \'\')">',
                 $comment->comment_ID,
                 comment_class( 'qapage-answer', $comment, $post->ID, false )
-            );
+                );
+            $output .= '<article class="comment-body">';
 
             // --- Cột Bỏ phiếu (Voting Column) ---
             $output .= '<div class="answer-voting" data-comment-id="' . $comment->comment_ID . '">';
@@ -172,6 +173,7 @@ class AMP_QAPage_Walker_Comment extends Walker_Comment {
                 $output .= '</div>'; // .answer-actions
             $output .= '</div>'; // .answer-meta
             $output .= '</div>'; // .answer-body
+            $output .= '</article>';
 
         // =================================================================
         // LOGIC CHO CẤP 2+ (Depth > 0) - Đây là một "COMMENT"

@@ -44,6 +44,83 @@ get_header();
 <?php endwhile; else : ?>
     <p>No content found.</p>
 <?php endif; ?>
+
+<?php
+// ======================================================
+// [MỚI] HIỂN THỊ DANH SÁCH TIN BĐS NẾU ĐÂY LÀ TRANG DỰ ÁN
+// ======================================================
+global $post;
+// 1. Kiểm tra xem trang/bài viết này có phải là dự án không
+$is_project = get_post_meta( $post->ID, '_is_project', true );
+
+if ( $is_project == '1' ) {
+    $project_id = $post->ID;
+    
+    // 2. Truy vấn tất cả CPT 'property' liên kết với Project ID này
+    $listings_args = [
+        'post_type'      => 'property',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1, // Hiển thị tất cả
+        'meta_key'       => '_project_id', // Key liên kết từ meta box
+        'meta_value'     => $project_id
+    ];
+    $project_listings = new WP_Query( $listings_args );
+
+    if ( $project_listings->have_posts() ) {
+        ?>
+        <section class="related-posts-section project-listings-section">
+            <h2 class="related-posts-title">Các BĐS đang bán tại Dự án</h2>
+            
+            <?php // 3. Sử dụng HTML wrapper (đã tối ưu mobile-first) ?>
+            <div class="project-listing-wrapper">
+                <?php 
+                while ( $project_listings->have_posts() ) : $project_listings->the_post(); 
+                    // Lấy các meta field tùy chỉnh của tin BĐS
+                    $prop_id = get_the_ID();
+                    $price = get_post_meta($prop_id, '_property_price_text', true) ?: 'Thỏa thuận';
+                    $area = get_post_meta($prop_id, '_property_area', true);
+                    $direction = get_post_meta($prop_id, '_property_direction', true);
+                ?>
+                    <div class="project-listing-item">
+                        <div class="listing-item-content">
+                            <h4 class="listing-item-title">
+                                <?php // 4. Thêm rel="nofollow" và target="_blank" ?>
+                                <a href="<?php the_permalink(); ?>" rel="nofollow" target="_blank">
+                                    <?php the_title(); ?>
+                                </a>
+                            </h4>
+                            <div class="listing-item-meta">
+                                <?php // 5. Hiển thị các trường tùy chỉnh ?>
+                                <span class="meta-item price"><?php echo esc_html($price); ?></span>
+                                <?php if ( $area ) : ?>
+                                <span class="meta-item area"><strong>DT:</strong> <?php echo esc_html($area); ?> m²</span>
+                                <?php endif; ?>
+                                <?php if ( $direction ) : ?>
+                                <span class="meta-item direction"><strong>Hướng:</strong> <?php echo esc_html($direction); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="listing-item-action">
+                            <a href="<?php the_permalink(); ?>" rel="nofollow" target="_blank" class="cta-link">
+                                <span>Xem chi tiết</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php 
+                endwhile; 
+                ?>
+            </div>
+        </section>
+        <?php
+        // 6. Khôi phục lại query gốc của trang Dự án
+        wp_reset_postdata();
+    }
+}
+// ======================================================
+// KẾT THÚC KHỐI MỚI
+// ======================================================
+?>
+
 <?php if (function_exists('tuancele_display_related_posts')) { tuancele_display_related_posts(); } ?>
 <?php if ( comments_open() || get_comments_number() ) : comments_template(); endif; ?>
 <?php

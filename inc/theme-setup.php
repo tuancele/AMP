@@ -35,6 +35,8 @@ function amp_custom_theme_setup() {
         'flex-width'  => true,
     ]);
     add_image_size('archive-thumb', 400, 229, true);
+    add_image_size('banner-main', 1600, 900, true); // 16:9 crop
+    add_image_size('og-image', 1200, 630, true); // 1.91:1 crop
 }
 add_action('after_setup_theme', 'amp_custom_theme_setup');
 

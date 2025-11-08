@@ -648,3 +648,127 @@ JS;
 // Kích hoạt hàm script
 add_action('admin_enqueue_scripts', 'property_admin_scripts');
 }
+
+/**
+ * =========================================================================
+ * (MỚI) META BOX ĐÁNH DẤU "DỰ ÁN" CHO POST VÀ PAGE
+ * =========================================================================
+ */
+
+// 1. Đăng ký Meta Box
+add_action('add_meta_boxes', 'tuancele_add_is_project_metabox');
+function tuancele_add_is_project_metabox() {
+    add_meta_box(
+        'tuancele_is_project_box',
+        'Cấu hình Dự án',
+        'tuancele_render_is_project_metabox',
+        ['post', 'page'], // Áp dụng cho cả Post và Page
+        'side',
+        'low'
+    );
+}
+
+// 2. Hàm render HTML cho Meta Box
+function tuancele_render_is_project_metabox($post) {
+    wp_nonce_field('tuancele_save_is_project_meta', 'tuancele_is_project_nonce');
+    $is_project = get_post_meta($post->ID, '_is_project', true);
+    ?>
+    <label>
+        <input type="checkbox" name="_is_project" value="1" <?php checked($is_project, '1'); ?>>
+        <strong>Đây là một Dự án BĐS</strong>
+    </label>
+    <p class="description">
+        Tích vào đây nếu bài viết/trang này là trang chính của một dự án.
+    </p>
+    <?php
+}
+
+// 3. Hàm lưu dữ liệu Meta Box
+add_action('save_post', 'tuancele_save_is_project_metabox');
+function tuancele_save_is_project_metabox($post_id) {
+    // Kiểm tra các điều kiện an toàn
+    if (!isset($_POST['tuancele_is_project_nonce']) || !wp_verify_nonce($_POST['tuancele_is_project_nonce'], 'tuancele_save_is_project_meta')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_post', $post_id)) return;
+    if (wp_is_post_revision($post_id)) return; // Bỏ qua nếu là bản revision
+
+    // Lưu hoặc xóa meta
+    if (isset($_POST['_is_project'])) {
+        update_post_meta($post_id, '_is_project', '1');
+    } else {
+        delete_post_meta($post_id, '_is_project');
+    }
+}
+
+/**
+ * =========================================================================
+ * (MỚI) META BOX CHỌN DỰ ÁN CHO CPT "PROPERTY"
+ * =========================================================================
+ */
+
+// 1. Đăng ký Meta Box cho CPT 'property'
+add_action('add_meta_boxes_property', 'tuancele_add_project_selection_metabox');
+function tuancele_add_project_selection_metabox() {
+    add_meta_box(
+        'tuancele_project_selection_box',
+        'Liên kết Dự án',
+        'tuancele_render_project_selection_metabox',
+        'property', // Chỉ áp dụng cho CPT 'property'
+        'side',
+        'high'
+    );
+}
+
+// 2. Hàm render HTML cho Meta Box (Dropdown)
+function tuancele_render_project_selection_metabox($post) {
+    wp_nonce_field('tuancele_save_project_id_meta', 'tuancele_project_id_nonce');
+    $saved_project_id = get_post_meta($post->ID, '_project_id', true);
+
+    // Truy vấn tất cả các Post và Page đã được đánh dấu là "_is_project"
+    $project_query_args = [
+        'post_type' => ['post', 'page'],
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => '_is_project',
+        'meta_value' => '1',
+        'orderby' => 'title',
+        'order' => 'ASC',
+    ];
+    $projects = get_posts($project_query_args);
+
+    ?>
+    <p>Chọn dự án mà tin rao này thuộc về:</p>
+    <select name="_project_id" style="width: 100%;">
+        <option value="">— Không thuộc dự án nào —</option>
+        <?php
+        if (!empty($projects)) {
+            foreach ($projects as $project) {
+                printf(
+                    '<option value="%s" %s>%s (%s)</option>',
+                    esc_attr($project->ID),
+                    selected($saved_project_id, $project->ID, false),
+                    esc_html($project->post_title),
+                    esc_html(ucfirst($project->post_type)) // Hiển thị (Page) hoặc (Post)
+                );
+            }
+        }
+        ?>
+    </select>
+    <?php
+}
+
+// 3. Hàm lưu ID Dự án đã chọn
+add_action('save_post_property', 'tuancele_save_project_id_metabox');
+function tuancele_save_project_id_metabox($post_id) {
+    // Các hàm kiểm tra an toàn
+    if (!isset($_POST['tuancele_project_id_nonce']) || !wp_verify_nonce($_POST['tuancele_project_id_nonce'], 'tuancele_save_project_id_meta')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_post', $post_id)) return;
+
+    // Lưu hoặc xóa meta
+    if (isset($_POST['_project_id']) && !empty($_POST['_project_id'])) {
+        update_post_meta($post_id, '_project_id', absint($_POST['_project_id']));
+    } else {
+        delete_post_meta($post_id, '_project_id');
+    }
+}

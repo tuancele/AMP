@@ -2546,3 +2546,95 @@ amp-sidebar nav amp-accordion .sub-menu .sub-menu li a {
 amp-sidebar nav amp-accordion .sub-menu .sub-menu li a:hover {
      background-color: #2a2a2a;
 }
+
+/* === CSS CHO DANH SÁCH TIN BĐS (TỐI ƯU V2 - MOBILE-FIRST) === */
+.project-listing-wrapper{
+    display:flex;
+    flex-direction:column;
+    gap:12px; /* Giảm khoảng cách giữa các item */
+    margin-top:20px
+}
+.project-listing-item{
+    display:flex;
+    /* Mobile-first: Xếp chồng lên nhau */
+    flex-direction:column; 
+    align-items:flex-start;
+    gap:10px; /* Khoảng cách giữa content và button trên mobile */
+    
+    background-color:#fff;
+    padding:12px 15px; /* Giảm padding (gọn hơn) */
+    border-radius:8px;
+    border:1px solid #e9ecef;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+    transition:transform .2s,box-shadow .2s
+}
+.project-listing-item:hover{transform:translateY(-3px);box-shadow:0 6px 15px rgba(0,0,0,.1)}
+
+.listing-item-content{flex-grow:1; width: 100%;} /* Đảm bảo content chiếm 100% width trên mobile */
+
+.listing-item-title{
+    font-family:'Poppins',sans-serif;
+    font-size:1.05rem; /* Giảm cỡ chữ 1 */
+    line-height:1.4;
+    color:#20202a;
+    margin:0 0 8px 0; /* Giảm lề dưới */
+}
+.listing-item-title a{text-decoration:none;color:inherit}
+.listing-item-title a:hover{color:var(--mau-chinh)}
+
+.listing-item-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px 12px; /* Giảm khoảng cách */
+    font-size:.85rem; /* Giảm cỡ chữ 2 */
+    color:#555
+}
+.listing-item-meta .meta-item{
+    padding-right:12px; /* Giảm padding 2 */
+    border-right:1px solid #eee
+}
+.listing-item-meta .meta-item:last-child{border-right:none}
+.listing-item-meta .price{font-weight:700;color:#dc3545}
+
+.listing-item-action .cta-link{
+    display:inline-block;
+    background-color:var(--mau-chu);
+    color:#fff;
+    padding:6px 14px; /* Giảm padding 3 (gọn hơn) */
+    border-radius:50px;
+    text-decoration:none;
+    font-weight:600;
+    font-size:.8rem; /* Giảm cỡ chữ 3 */
+    transition:background-color .2s;
+    white-space:nowrap;
+    margin-left:0; /* Mobile-first: không cần margin trái */
+}
+.listing-item-action .cta-link:hover{background-color:#004494}
+
+/* Kích hoạt layout Desktop */
+@media (min-width:600px){
+    .project-listing-item{
+        flex-direction:row; /* Chuyển lại layout hàng ngang */
+        align-items:center;
+        gap:15px;
+        padding: 15px 20px; /* Trả lại padding cho desktop */
+    }
+    .listing-item-action .cta-link{
+        margin-left:15px; /* Thêm margin cho nút trên desktop */
+    }
+}
+
+/* === [FIX V8] FIX LỖI ARIA CHO AMP-CAROUSEL EVENT BAR === */
+
+/* * amp-carousel tự động thêm [aria-hidden="true"] vào thẻ cha 
+ * của slide (.event-slide) khi nó bị ẩn.
+ * Bộ chọn (selector) này tìm thẻ <a> bên trong slide đang bị ẩn
+ * và vô hiệu hóa nó cho trình đọc màn hình (tabindex=-1)
+ * và vô hiệu hóa click chuột (pointer-events).
+ *
+ * Đây là cách làm hợp lệ, không vi phạm AMP Validator.
+*/
+#amp-event-bar div[aria-hidden="true"] a.event-notification-link {
+    pointer-events: none;
+    tabindex: -1;
+}

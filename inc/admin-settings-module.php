@@ -64,6 +64,10 @@ final class AMP_Admin_Settings_Module {
      *
      */
     public function create_settings_pages() {
+        // Chỉ chạy hàm này nếu user là admin (có quyền 'manage_options')
+        if ( ! current_user_can('manage_options') ) {
+            return;
+        }
         // [ĐÃ SỬA] Thay đổi hàm callback mặc định từ 'shortcode_guide_page' thành 'integrations_settings_page'
         add_menu_page('Cài đặt Theme AMP', 'Cài đặt AMP', 'manage_options', 'tuancele-amp-settings', [ $this, 'integrations_settings_page' ], 'dashicons-superhero-alt', 60);
         
@@ -198,6 +202,70 @@ final class AMP_Admin_Settings_Module {
 
         add_settings_section('tuancele_integrations_modules_section', 'Kích hoạt Module', null, 'tuancele-amp-integrations');
         add_settings_field('enable_property_cpt', 'Kích hoạt Module BĐS', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_modules_section', ['id' => 'enable_property_cpt', 'type' => 'checkbox']);
+
+        // === [MỚI] THÊM KHỐI TƯỜNG LỬA IP ===
+        
+        add_settings_section(
+            'tuancele_ip_blocker_section', // ID Section
+            'Tường lửa IP Tự động (Gatekeeper)', // Tiêu đề Section
+            [ $this, 'ip_blocker_section_callback' ], // Hàm Callback
+            'tuancele-amp-integrations' // Tên trang
+        );
+
+        add_settings_field(
+            'enable_ip_blocker', 
+            'Kích hoạt Tường lửa', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_ip_blocker_section', 
+            [
+                'id' => 'enable_ip_blocker', 
+                'type' => 'checkbox', 
+                'desc' => 'Tự động chặn IP có dấu hiệu tấn công (DDoS) dựa trên số lượng request.'
+            ]
+        );
+        
+        add_settings_field(
+            'blocking_threshold', 
+            'Ngưỡng chặn (request/giờ)', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_ip_blocker_section', 
+            [
+                'id' => 'blocking_threshold', 
+                'type' => 'number', 
+                'default' => 500, 
+                'desc' => 'Số lượng request trong 1 giờ. Nếu vượt quá, IP sẽ bị chặn trong 1 giờ. (Nên đặt > 300)'
+            ]
+        );
+        
+        add_settings_field(
+            'ip_manual_blacklist', 
+            'Danh sách Cấm (thủ công)', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_ip_blocker_section', 
+            [
+                'id' => 'ip_manual_blacklist', 
+                'type' => 'textarea', 
+                'desc' => 'Mỗi IP một dòng. Các IP này sẽ bị cấm vĩnh viễn.'
+            ]
+        );
+
+        add_settings_field(
+            'ip_manual_whitelist', 
+            'Danh sách Trắng (luôn cho phép)', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_ip_blocker_section', 
+            [
+                'id' => 'ip_manual_whitelist', 
+                'type' => 'textarea', 
+                'desc' => 'Mỗi IP một dòng. Các IP này (ví dụ: IP văn phòng, Googlebot 66.249...) sẽ không bao giờ bị chặn.'
+            ]
+        );
+        
+        // === KẾT THÚC KHỐI MỚI ===
 
         // --- [THÊM MỚI] Đăng ký Cài đặt A/B Testing ---
         register_setting(
@@ -335,27 +403,46 @@ final class AMP_Admin_Settings_Module {
      *
      */
     
-    public function integrations_field_callback($args) {
+        public function integrations_field_callback($args) {
         $options = get_option('tuancele_integrations_settings', []);
         $id = $args['id'];
         $value = isset($options[$id]) && $options[$id] !== '' ? $options[$id] : ($args['default'] ?? '');
         $type = $args['type'] ?? 'text';
         $placeholder = $args['placeholder'] ?? '';
+        $name_attr = 'tuancele_integrations_settings[' . esc_attr($id) . ']';
 
         switch ($type) {
             case 'checkbox':
-                echo '<label><input type="checkbox" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="on" ' . checked('on', $value, false) . '></label>';
+                echo '<label><input type="checkbox" id="'.esc_attr($id).'" name="'.esc_attr($name_attr).'" value="on" ' . checked('on', $value, false) . '></label>';
                 break;
-            
+            case 'textarea':
+                echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name_attr) . '" rows="5" class="large-text code">' . esc_textarea($value) . '</textarea>';
+                break;
+            case 'number':
+                echo '<input type="number" id="'.esc_attr($id).'" name="'.esc_attr($name_attr).'" value="'.esc_attr($value).'" class="small-text" placeholder="'.esc_attr($placeholder).'" />';
+                break;
             case 'text':
             default:
-                echo '<input type="text" id="'.esc_attr($id).'" name="tuancele_integrations_settings['.esc_attr($id).']" value="'.esc_attr($value).'" class="regular-text" placeholder="'.esc_attr($placeholder).'" />';
+                echo '<input type="text" id="'.esc_attr($id).'" name="'.esc_attr($name_attr).'" value="'.esc_attr($value).'" class="regular-text" placeholder="'.esc_attr($placeholder).'" />';
                 break;
         }
 
         if (!empty($args['desc'])) {
             echo '<p class="description">' . wp_kses_post($args['desc']) . '</p>';
         }
+    }
+
+    public function ip_blocker_section_callback() {
+        echo '<p>Phân tích log truy cập (từ CSDL <code>wp_visitor_logs</code>) để tự động chặn các IP có lưu lượng truy cập bất thường.</p>';
+        
+        // Hiển thị thời gian Cron Job chạy lần cuối
+        $last_run = get_option('tuancele_ip_analyzer_last_run', 'Chưa chạy');
+        if(is_numeric($last_run)) {
+            // Chuyển đổi về múi giờ VN (GMT+7)
+            $last_run_time = $last_run + (7 * 3600); 
+            $last_run = date('H:i:s \n\g\à\y d/m/Y', $last_run_time);
+        }
+        echo '<p><strong>Lần quét gần nhất:</strong> ' . esc_html($last_run) . '</p>';
     }
 
 // --- [THÊM MỚI] Callback cho A/B Testing ---

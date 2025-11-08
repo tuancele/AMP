@@ -245,7 +245,7 @@ final class AMP_Shortcodes_Module {
         <div class="amp-slider-container">
             <amp-carousel width="<?php echo esc_attr( $atts['width'] ); ?>" height="<?php echo esc_attr( $atts['height'] ); ?>" layout="responsive" type="slides" controls loop autoplay delay="4000">
                 <?php foreach ( $image_ids as $id ) :
-                    $image_data = wp_get_attachment_image_src( $id, 'large' );
+                    $image_data = wp_get_attachment_image_src( $id, 'banner-main' );
                     $alt_text = get_post_meta( $id, '_wp_attachment_image_alt', true ) ?: get_the_title($id);
                     if ( $image_data ) : ?>
                         <amp-img src="<?php echo esc_url( $image_data[0] ); ?>" width="<?php echo esc_attr( $image_data[1] ); ?>" height="<?php echo esc_attr( $image_data[2] ); ?>" layout="responsive" alt="<?php echo esc_attr( $alt_text ); ?>"></amp-img>
@@ -689,9 +689,10 @@ final class AMP_Shortcodes_Module {
         return ob_get_clean();
     }
 
-    /**
+/**
      * SHORTCODE [amp_event_bar]
-     * (Đã sửa lỗi "low trust")
+     * [FIX V8 - FINAL] Quay lại dùng <a> và <span> (HTML sạch).
+     * Lỗi ARIA sẽ được fix bằng CSS (dùng attribute selector [aria-hidden="true"]).
      */
     public function amp_event_bar($atts) {
         $args = ['post_type' => 'event', 'post_status' => 'publish', 'posts_per_page' => -1];
@@ -699,9 +700,13 @@ final class AMP_Shortcodes_Module {
         if (!$event_query->have_posts()) { return ''; }
 
         $schema_items = [];
+        // [ĐÃ XÓA] amp-state
+
         ob_start();
         ?>
         <div id="amp-event-bar" class="event-carousel-wrapper">
+            
+            <?php // [ĐÃ XÓA] on="slideChange" ?>
             <amp-carousel id="eventCarousel" layout="fill" type="slides" autoplay delay="5000" loop>
                 <?php 
                 while ($event_query->have_posts()) : $event_query->the_post(); 
@@ -712,7 +717,7 @@ final class AMP_Shortcodes_Module {
                     $description = $meta['_event_description'][0] ?? '';
                     $icon = $meta['_event_icon'][0] ?? '🚀';
                     
-                    // --- Schema Data Logic ---
+                    // --- Schema Data Logic (Giữ nguyên) ---
                     $event_schema = ['@type' => 'Event', 'name' => $event_title];
                     if (!empty($meta['_event_start_date'][0])) { try { $dt_start = new DateTime($meta['_event_start_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['startDate'] = $dt_start->format(DateTime::ATOM); } catch (Exception $e) {} }
                     if (!empty($meta['_event_end_date'][0])) { try { $dt_end = new DateTime($meta['_event_end_date'][0], new DateTimeZone('Asia/Ho_Chi_Minh')); $event_schema['endDate'] = $dt_end->format(DateTime::ATOM); } catch (Exception $e) {} }
@@ -730,10 +735,16 @@ final class AMP_Shortcodes_Module {
                     // --- End Schema Data Logic ---
                 ?>
                     <div class="event-slide">
-                        <div role="link" tabindex="0" class="event-notification-link" on="tap:AMP.navigateTo(url='<?php echo esc_url($event_url); ?>')">
+                        
+                        <?php // [MỚI V8] Quay lại dùng <a> và <span>. Xóa [tabindex] và tabindex tĩnh. ?>
+                        <a href="<?php echo esc_url($event_url); ?>" 
+                           target="_top" 
+                           class="event-notification-link"
+                        >
                             <div class="sonar-icon-wrap"><span class="event-status-icon"><?php echo esc_html($icon); ?></span><span class="sonar-pulse"></span></div>
-                            <p class="event-description-text"><strong><?php echo esc_html($event_title); ?>:</strong> <?php echo esc_html($description); ?></p>
-                        </div>
+                            
+                            <span class="event-description-text"><strong><?php echo esc_html($event_title); ?>:</strong> <?php echo esc_html($description); ?></span>
+                        </a>
                     </div>
                 <?php 
                 endwhile; 
@@ -742,15 +753,17 @@ final class AMP_Shortcodes_Module {
             </amp-carousel>
         </div>
         <?php
-        wp_reset_postdata();
+        $carousel_html = ob_get_clean();
+        
         $schema_output = '';
         if (!empty($schema_items)) {
             $full_schema = ['@context' => 'https://schema.org', '@type' => 'ItemList', 'name' => 'Danh Sách Sự Kiện Nổi Bật', 'itemListElement' => $schema_items];
             $schema_output = '<script type="application/ld+json">' . json_encode($full_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>';
         }
-        return ob_get_clean() . $schema_output;
+        
+        // [MỚI V8] Trả về carousel + schema (Không còn amp-state)
+        return $carousel_html . $schema_output;
     }
-
     /**
      * [SỬA LỖI A/B TEST V8 - FINAL] SHORTCODE CON
      * Mô phỏng logic dọn dẹp <p> từ [schema_howto_step]

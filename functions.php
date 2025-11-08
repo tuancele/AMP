@@ -324,5 +324,44 @@ function tuancele_create_visitor_log_table() {
 // Đăng ký hàm này để nó chạy mỗi khi theme được kích hoạt
 add_action('after_switch_theme', 'tuancele_create_visitor_log_table');
 
+/**
+ * =========================================================================
+ * TÙY CHỈNH TRANG ĐĂNG NHẬP (wp-login.php)
+ * =========================================================================
+ */
+
+// 1. Thay đổi logo (hình ảnh)
+function my_custom_login_logo() { 
+    ?>
+    <style type="text/css">
+        #login h1 a, .wp-login-logo a {
+            /* * THAY THẾ DÒNG NÀY bằng URL logo của bạn.
+             * (Tôi đang dùng tạm 1 icon có sẵn trong theme của bạn làm ví dụ) 
+             */
+            background-image: url(<?php echo get_template_directory_uri(); ?>/assets/icons/android-chrome-192x192.png);
+            
+            /* Điều chỉnh kích thước cho phù hợp với logo của bạn */
+            height: 84px; /* Chiều cao mặc định của WP */
+            width: 84px; /* Chiều rộng mặc định của WP */
+            background-size: 84px 84px; /* Cho logo nằm trọn trong khung */
+            background-repeat: no-repeat;
+        }
+    </style>
+<?php 
+}
+add_action( 'login_enqueue_scripts', 'my_custom_login_logo' );
+
+// 2. Thay đổi URL khi nhấp vào logo (liên kết về trang chủ)
+function my_custom_login_logo_url() {
+    return home_url('/');
+}
+add_filter( 'login_headerurl', 'my_custom_login_logo_url' );
+
+// 3. Thay đổi text khi di chuột vào logo (sử dụng tên website)
+function my_custom_login_logo_url_title() {
+    return get_bloginfo('name');
+}
+add_filter( 'login_headertext', 'my_custom_login_logo_url_title' );
+
 // TẠM THỜI: Xóa cache CSS
 delete_transient('tuancele_amp_css_cache_v2');

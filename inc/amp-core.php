@@ -248,6 +248,7 @@ function amp_filter_the_content($content) {
         if (strpos($attr, 'width=') === false) $attr .= ' width="600"';
         if (strpos($attr, 'height=') === false) $attr .= ' height="400"';
         if (strpos($attr, 'sandbox=') === false) $attr .= ' sandbox="allow-scripts allow-same-origin allow-popups"';
+        if (strpos($attr, 'sandbox=') === false) $attr .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"';
         return '<amp-iframe ' . $attr . '><div placeholder style="background:#f0f4f8 url(/wp-includes/images/spinner.gif) no-repeat center; background-size: 20px; display:flex; align-items:center; justify-content:center;">Loading...</div></amp-iframe>';
     }, $content);
     return $content;

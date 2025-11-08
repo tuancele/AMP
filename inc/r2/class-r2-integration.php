@@ -46,6 +46,9 @@ final class Tuancele_R2_Integration {
         if ($client->is_enabled()) {
             $rewriter = new Tuancele_R2_Rewriter();
 
+            // Hook để đổi tên file TRƯỚC KHI lưu và TRƯỚC KHI offload
+            add_filter( 'wp_handle_upload_prefilter', [ $this, 'rename_file_on_upload' ], 10, 1 );
+
             // Hooks cho upload và delete
             add_filter('wp_generate_attachment_metadata', [$actions, 'handle_upload'], 20, 2);
             add_action('delete_attachment', [$actions, 'handle_delete'], 10, 1);
@@ -84,4 +87,54 @@ final class Tuancele_R2_Integration {
         $status = Tuancele_R2_Client::test_connection($new_value);
         update_option('tuancele_r2_connection_status', $status);
     }
+/**
+     * [MỚI] Tự động đổi tên file ảnh khi upload theo định dạng chuẩn.
+     * Chạy trước khi file được lưu vào thư mục uploads.
+     *
+     * @param array $file Mảng thông tin file upload.
+     * @return array Mảng thông tin file đã được sửa đổi.
+     */
+    public function rename_file_on_upload( $file ) {
+        // Lấy thông tin file
+        $file_info = pathinfo( $file['name'] );
+        
+        // Lấy phần mở rộng (extension) một cách an toàn
+        $extension = isset( $file_info['extension'] ) ? strtolower( $file_info['extension'] ) : '';
+        
+        // Xử lý cả file ảnh, video và tài liệu
+        $allowed_extensions = [ 
+            'jpg', 'jpeg', 'png', 'gif', 'webp', // Ảnh
+            'mp4', 'mov', 'avi', 'wmv', // Video
+            'mp3', 'wav', // Âm thanh
+            'pdf' // Tài liệu
+        ];
+
+        if ( in_array( $extension, $allowed_extensions ) ) {
+            
+            // 1. Tạo chuỗi Ngày-Giờ-Phút-Giây
+            try {
+                // Sử dụng múi giờ của WordPress
+                $datetime = new DateTime( 'now', wp_timezone() );
+                $date_str = $datetime->format( 'dmY' ); // 07112025
+                $time_str = $datetime->format( 'His' ); // 192658
+            } catch ( Exception $e ) {
+                // Fallback nếu có lỗi timezone
+                $date_str = date( 'dmY' );
+                $time_str = date( 'His' );
+            }
+
+            // 2. Tạo chuỗi ngẫu nhiên 6 ký tự
+            $random_str = strtolower( substr( wp_generate_password( 12, false ), 0, 6 ) );
+
+            // 3. Tạo tên file mới: 07112025-192658-abcdef.jpg
+            $new_name = $date_str . '-' . $time_str . '-' . $random_str . '.' . $extension;
+            
+            // 4. Gán tên mới cho file
+            $file['name'] = $new_name;
+        }
+        
+        // Trả về file đã sửa đổi (hoặc file gốc nếu không phải ảnh)
+        return $file;
+    }
+
 }

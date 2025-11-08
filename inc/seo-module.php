@@ -67,7 +67,7 @@ final class AMP_SEO_Module {
             $url = get_permalink();
             
             if ( has_post_thumbnail($post->ID) ) {
-                $image = get_the_post_thumbnail_url($post->ID, 'large');
+                $image = get_the_post_thumbnail_url($post->ID, 'og-image');
             } else {
                 $schema_options = get_option('tuancele_amp_schema_options');
                 $image = $schema_options['logo'] ?? '';
@@ -216,7 +216,7 @@ final class AMP_SEO_Module {
                     $article_schema['review'] = $review_schemas;
                 }
                 if (has_post_thumbnail()) {
-                    $image_data = wp_get_attachment_image_src(get_post_thumbnail_id($post->ID), 'large');
+                    $image_data = wp_get_attachment_image_src(get_post_thumbnail_id($post->ID), 'og-image');
                     $article_schema['image'] = ['@type' => 'ImageObject', '@id' => $post_url . '#primaryimage', 'url' => $image_data[0], 'width' => $image_data[1], 'height' => $image_data[2]];
                 }
                 $schema_graph[] = $article_schema;

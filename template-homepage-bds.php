@@ -83,7 +83,7 @@ $banner_url = get_post_meta($page_id, '_bds_banner_url', true);
     <?php
     // Phần Banner
     if ( $banner_img_id > 0 ) :
-        $banner_img_data = wp_get_attachment_image_src($banner_img_id, 'large');
+        $banner_img_data = wp_get_attachment_image_src($banner_img_id, 'banner-main');
         if ($banner_img_data) : 
             $is_clickable = !empty($banner_url);
             $tag = $is_clickable ? 'a' : 'div';
