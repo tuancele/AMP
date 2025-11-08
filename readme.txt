@@ -1,6 +1,6 @@
 === Theme AMP v1.0.0 ===
 Tác giả: Tuancele
-Website: https://vpnmisa.com/
+Website: https://booyoung.org
 
 Cảm ơn bạn đã sử dụng theme này. Để theme hoạt động chính xác ngay sau khi kích hoạt, vui lòng thực hiện các bước cấu hình bắt buộc dưới đây.
 
