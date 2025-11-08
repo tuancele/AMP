@@ -6,6 +6,10 @@
  * [TỐI ƯU V8.3 - FIX LỖI INVALID POST TYPE]
  * - Thay đổi priority của hook 'init' thành 5 (chạy sớm hơn)
  * để đảm bảo CPT được đăng ký trước khi admin menu cần đến nó.
+ *
+ * [NÂNG CẤP BĐS - GIAI ĐOẠN 2]
+ * - Thêm dropdown "Thuộc Dự án" (_im_project_id) vào Meta Box.
+ * - Thêm logic lưu trữ cho trường meta mới.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -37,7 +41,6 @@ function tuancele_register_image_map_cpt() {
         'labels'                => $labels,
         'public'                => false, // Không hiển thị công khai trên website
         'show_ui'               => true, // Hiển thị trong admin
-        // [FIX V8.2] Đặt thành false để thêm menu thủ công sau
         'show_in_menu'          => false, 
         'capability_type'       => 'post',
         'hierarchical'          => false,
@@ -49,7 +52,6 @@ function tuancele_register_image_map_cpt() {
     ];
     register_post_type('image_map', $args);
 }
-// [FIX V8.3] Thay đổi priority từ 10 (mặc định) thành 5
 add_action('init', 'tuancele_register_image_map_cpt', 5);
 
 // =========================================================================
@@ -134,6 +136,51 @@ function tuancele_render_image_map_meta_box($post) {
             </select>
             <p class="description"><?php _e("Chọn 'Popup' yêu cầu bạn điền Nội dung Popup cho từng Hotspot bên dưới.", 'tuancele-amp'); ?></p>
         </div>
+
+        <?php
+        // ==================================================
+        // [THÊM MỚI GIAI ĐOẠN 2] ĐOẠN CODE CHỌN DỰ ÁN
+        // ==================================================
+        $selected_project_id = get_post_meta($post->ID, '_im_project_id', true);
+        
+        // Truy vấn tất cả các Post/Page được đánh dấu là Dự án (logic từ inc/meta-boxes.php)
+        $project_query_args = [
+            'post_type' => ['post', 'page'],
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_key' => '_is_project',
+            'meta_value' => '1',
+            'orderby' => 'title',
+            'order' => 'ASC',
+        ];
+        $projects = get_posts($project_query_args);
+        ?>
+        <div class="im-field">
+            <label for="_im_project_id">2.5. <?php _e('Thuộc Dự án (Tùy chọn):', 'tuancele-amp'); ?></label>
+            <select id="_im_project_id" name="_im_project_id" style="width: 100%;">
+                <option value="">— Không thuộc dự án nào —</option>
+                <?php
+                if (!empty($projects)) {
+                    foreach ($projects as $project) {
+                        printf(
+                            '<option value="%s" %s>%s (%s)</option>',
+                            esc_attr($project->ID),
+                            selected($selected_project_id, $project->ID, false),
+                            esc_html($project->post_title),
+                            esc_html(ucfirst($project->post_type))
+                        );
+                    }
+                }
+                ?>
+            </select>
+            <p class="description"><?php _e("Liên kết mặt bằng này với một trang Dự án. Điều này cho phép các tin BĐS chọn hotspot từ mặt bằng này.", 'tuancele-amp'); ?></p>
+        </div>
+        
+        <?php
+        // ==================================================
+        // [KẾT THÚC THÊM MỚI]
+        // ==================================================
+        ?>
 
         <div class="im-field">
             <label for="_im_hotspot_size">3. <?php _e('Kích thước Hotspot (Ví dụ: 25px, 3%):', 'tuancele-amp'); ?></label>
@@ -229,6 +276,18 @@ function tuancele_save_image_map_meta_box($post_id) {
 
     // --- Lưu các trường ---
 
+    // ==================================================
+    // [THÊM MỚI GIAI ĐOẠN 2] LƯU PROJECT ID
+    // ==================================================
+    if (isset($_POST['_im_project_id'])) {
+        update_post_meta($post_id, '_im_project_id', sanitize_text_field($_POST['_im_project_id']));
+    } else {
+        delete_post_meta($post_id, '_im_project_id');
+    }
+    // ==================================================
+    // [KẾT THÚC THÊM MỚI]
+    // ==================================================
+
     // Lưu Image ID
     if (isset($_POST['_im_image_id'])) {
         update_post_meta($post_id, '_im_image_id', sanitize_text_field($_POST['_im_image_id']));
@@ -239,7 +298,6 @@ function tuancele_save_image_map_meta_box($post_id) {
     // Lưu Hotspot Data
     if (isset($_POST['_im_hotspot_data'])) {
         $hotspot_content = wp_unslash($_POST['_im_hotspot_data']);
-        // [FIX] Sử dụng sanitize_textarea_field để làm sạch dữ liệu, vô hiệu hóa HTML nguy hiểm
         update_post_meta($post_id, '_im_hotspot_data', sanitize_textarea_field($hotspot_content));
     } else {
         delete_post_meta($post_id, '_im_hotspot_data');

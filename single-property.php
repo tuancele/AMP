@@ -4,10 +4,12 @@
  * single-property.php
  * Template tự động hiển thị chi tiết Bất động sản
  *
- * PHIÊN BẢN HOÀN CHỈNH:
- * - Đã fix lỗi breadcrumb (hiển thị 1 lần, hỗ trợ CPT).
- * - Đã xóa [tinh_lai_suat] để fix lỗi AMP.
- * - Đã fix logic tạo Schema BĐS, tự động thêm vào @graph.
+ * [NÂNG CẤP BĐS - GIAI ĐOẠN 4]
+ * - Đã XÓA logic lấy `_property_map_id` thủ công.
+ * - Thêm logic mới: Tự động tìm `map_id` bằng cách truy vấn `image_map`
+ * dựa trên `_project_id` của tin BĐS.
+ * - Tự động lấy `_property_hotspot_name` (tên căn hộ) đã lưu.
+ * - Truyền cả `map_id` và `highlight` (tên căn hộ) vào shortcode [amp_imagemap].
  *
  * [KHÔI PHỤC V11 GỐC]
  * - Khôi phục logic animation và position observer cho thanh tiến trình.
@@ -20,7 +22,6 @@ get_header();
 
     <?php 
     // [FIX] Hiển thị Breadcrumbs 1 LẦN DUY NHẤT
-    // Hàm này đã được nâng cấp trong inc/template-helpers.php để hiểu CPT
     if (function_exists('tuancele_amp_display_breadcrumbs')) { 
         tuancele_amp_display_breadcrumbs(); 
     } 
@@ -37,8 +38,33 @@ get_header();
     // 1. Dữ liệu cho Slider
     $slider_ids = $get_val('_property_slider_ids');
 
-    // 3. Dữ liệu cho Image Map
-    $map_id = $get_val('_property_map_id');
+    // ==================================================
+    // [LOGIC MỚI GIAI ĐOẠN 4]
+    // ==================================================
+    // 2. Lấy Project ID và Hotspot Name từ tin BĐS này
+    $project_id = $get_val('_project_id'); // Lấy dự án mà tin này thuộc về
+    $highlight_hotspot = $get_val('_property_hotspot_name'); // Lấy tên hotspot đã chọn (vd: "can-01")
+    $map_id = 0; // Đặt map_id về 0
+    
+    // 3. Tìm Image Map tương ứng với Dự án
+    if ( ! empty( $project_id ) ) {
+        // Truy vấn để tìm Image Map tương ứng với Dự án này (logic từ Giai đoạn 2)
+        $map_query = new WP_Query([
+            'post_type' => 'image_map',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            'meta_key' => '_im_project_id', // Key của Image Map
+            'meta_value' => $project_id,    // Phải khớp với Project ID của tin BĐS
+            'fields' => 'ids' // Tối ưu, chỉ cần ID
+        ]);
+        if ( $map_query->have_posts() ) {
+            $map_id = $map_query->posts[0]; // Lấy được map_id
+        }
+        wp_reset_postdata(); // Quan trọng: Reset query
+    }
+    // ==================================================
+    // [KẾT THÚC LOGIC MỚI GIAI ĐOẠN 4]
+    // ==================================================
     ?>
     
     <?php // [FIX LỖI ANIMATION] Thêm id vào thẻ article ?>
@@ -128,11 +154,20 @@ get_header();
         <div class="content"><?php the_content(); ?></div>
         
         <?php
-        // 5. Hiển thị Mặt bằng (nếu có)
-        if ( ! empty( $map_id ) ) {
+        // ==================================================
+        // [CẬP NHẬT GIAI ĐOẠN 4]
+        // ==================================================
+        // 5. Hiển thị Mặt bằng (nếu $map_id được tìm thấy)
+        if ( $map_id > 0 ) {
             echo '<h2>Mặt bằng chi tiết</h2>';
-            echo do_shortcode( '[amp_imagemap id="' . esc_attr( $map_id ) . '"]' );
+            // Truyền cả map_id VÀ tên hotspot cần highlight vào shortcode
+            echo do_shortcode( 
+                '[amp_imagemap id="' . esc_attr( $map_id ) . '" highlight="' . esc_attr( $highlight_hotspot ) . '"]' 
+            );
         }
+        // ==================================================
+        // [KẾT THÚC CẬP NHẬT]
+        // ==================================================
         
         // 6. Hiển thị Form đăng ký
         echo '<h2>Đăng ký nhận tư vấn</h2>';
@@ -152,7 +187,6 @@ get_header();
 /**
  * =========================================================================
  * [KHÔI PHỤC V11 GỐC] LOGIC CHO THANH TIẾN TRÌNH ĐỌC
- * [FIX LỖI ANIMATION] Thêm kiểm tra $GLOBALS['has_toc']
  * =========================================================================
  */
 // Chỉ in các script này nếu Mục lục (TOC) đã được tạo

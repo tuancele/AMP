@@ -3,17 +3,10 @@
  * inc/shortcodes-module.php
  * Module Class cho việc đăng ký và xử lý TẤT CẢ các shortcode của theme.
  *
- * [TỐI ƯU HOWTO V28] - Giải pháp cuối cùng.
- * 1. Gỡ bỏ filter 'no_texturize_shortcodes' (trong __construct)
- * để cho phép wptexturize chạy nhất quán trên cả Post và Page.
- * 2. Thêm logic chuẩn hóa dấu nháy cong (str_replace) vào hàm cha [schema_howto]
- * để sửa lỗi do wptexturize gây ra TRƯỚC KHI do_shortcode.
- * 3. Khôi phục hàm con [step] về logic $atts đơn giản, vì $atts
- * bây giờ sẽ luôn được parse chính xác.
- *
- * [TỐI ƯU LAI SUAT v1]: Sửa lỗi duplicate ID của [tinh_lai_suat] bằng uniqid().
- * [TỐI ƯU IMAGEMAP V6]: Sửa HTML để hiển thị tiêu đề hotspot cố định.
- * [THÊM MỚI]: Thêm shortcode [ab_test_variant]
+ * [NÂNG CẤP BĐS - GIAI ĐOẠN 5]
+ * - Sửa shortcode [amp_imagemap] để chấp nhận thuộc tính 'highlight'.
+ * - Thêm logic để gán class 'hotspot-highlighted' và 'hotspot-dimmed'
+ * cho cả hotspot trên ảnh và hotspot trong danh sách.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -35,10 +28,6 @@ final class AMP_Shortcodes_Module {
         add_shortcode('schema_howto', [ $this, 'schema_howto' ]); // Hàm cha
         add_shortcode('step', [ $this, 'schema_howto_step' ]); // Hàm con
         
-        // [FIX V28] Gỡ bỏ filter gây ra sự không nhất quán giữa Post và Page
-        // add_filter( 'no_texturize_shortcodes', [ $this, 'prevent_texturize_in_howto' ] );
-        // --- KẾT THÚC BỘ FIX HOWTO ---
-
         add_shortcode('amp_slider', [ $this, 'amp_slider' ]);
         add_shortcode('chi_tiet_bds', [ $this, 'chi_tiet_bds' ]);
         add_shortcode('tinh_lai_suat', [ $this, 'tinh_lai_suat' ]);
@@ -50,7 +39,7 @@ final class AMP_Shortcodes_Module {
         add_shortcode('amp_product', [ $this, 'amp_product' ]);
         add_shortcode('quang_cao_noi_bo', [ $this, 'internal_ad' ]);
         add_shortcode('dang_ky_sdt', [ $this, 'phone_registration' ]);
-        add_shortcode('amp_imagemap', [ $this, 'amp_imagemap' ]);
+        add_shortcode('amp_imagemap', [ $this, 'amp_imagemap' ]); // <-- SẼ SỬA HÀM NÀY
         add_shortcode('amp_event_bar', [ $this, 'amp_event_bar' ]);
         
        // Đảm bảo 2 dòng này tồn tại
@@ -564,13 +553,23 @@ final class AMP_Shortcodes_Module {
         return '<div class="shortcode-error">[LỖI: Hàm get_amp_phone_only_form_html() không tồn tại]</div>';
     }
 
-    /**
+/**
      * SHORTCODE [amp_imagemap]
-     * [TỐI ƯU V6] Sửa HTML để hiển thị tiêu đề hotspot cố định.
+     * [NÂNG CẤP BĐS - GĐ 5] Thêm logic 'highlight'
      */
     public function amp_imagemap($atts) {
-        $atts = shortcode_atts(['id' => 0], $atts);
+        // ==================================================
+        // [CẬP NHẬT GIAI ĐOẠN 5] Chấp nhận 'highlight'
+        // ==================================================
+        $atts = shortcode_atts([
+            'id' => 0,
+            'highlight' => '' // Thuộc tính mới
+        ], $atts, 'amp_imagemap');
+        
         $map_id = intval($atts['id']);
+        $highlight_name = $atts['highlight']; // Biến mới
+        // ==================================================
+        
         if ($map_id <= 0 || get_post_type($map_id) !== 'image_map') {
             return '<div class="shortcode-error">Lỗi [amp_imagemap]: ID không hợp lệ.</div>';
         }
@@ -613,7 +612,6 @@ final class AMP_Shortcodes_Module {
         <div class="amp-css-imagemap-wrapper" data-map-id="<?php echo $map_id; ?>" style="position: relative;">
             <amp-img src="<?php echo $image_url; ?>" width="<?php echo $width; ?>" height="<?php echo $height; ?>" layout="responsive" alt="<?php echo esc_attr($alt); ?>"></amp-img>
             
-            <?php // --- BẮT ĐẦU SỬA LỖI V6 --- ?>
             <?php foreach ($hotspot_data as $data) : 
                 $number = esc_html($data['number']);
                 $safe_unit_id = sanitize_title($data['name']);
@@ -629,9 +627,22 @@ final class AMP_Shortcodes_Module {
                 } else {
                     $extra_attrs = 'href="' . esc_url($data['url']) . '"';
                 }
+
+                // ==================================================
+                // [THÊM MỚI GIAI ĐOẠN 5] LOGIC CLASS CSS
+                // ==================================================
+                $wrapper_class = 'css-hotspot-wrapper';
+                if ( ! empty( $highlight_name ) ) {
+                    if ( $data['name'] == $highlight_name ) {
+                        $wrapper_class .= ' hotspot-highlighted';
+                    } else {
+                        $wrapper_class .= ' hotspot-dimmed';
+                    }
+                }
+                // ==================================================
             ?>
                 
-                <div class="css-hotspot-wrapper" style="position: absolute; left: <?php echo $data['left']; ?>%; top: <?php echo $data['top']; ?>%; transform: translate(-50%, -50%);">
+                <div class="<?php echo esc_attr($wrapper_class); // <-- THAY ĐỔI Ở ĐÂY ?>" style="position: absolute; left: <?php echo $data['left']; ?>%; top: <?php echo $data['top']; ?>%; transform: translate(-50%, -50%);">
                     
                     <<?php echo $tag; ?> <?php echo $extra_attrs; ?> class="css-hotspot hotspot-on-image" id="hotspot-image-<?php echo esc_attr($safe_unit_id); ?>" style="width: <?php echo esc_attr($hotspot_size); ?>; height: <?php echo esc_attr($hotspot_size); ?>;" title="<?php echo esc_attr($data['name']); // Giữ title cho accessibility ?>">
                        <?php echo $number; ?>
@@ -641,7 +652,6 @@ final class AMP_Shortcodes_Module {
                 </div>
 
             <?php endforeach; ?>
-            <?php // --- KẾT THÚC SỬA LỖI V6 --- ?>
         </div>
         
         <div class="amp-css-hotspot-list-wrapper">
@@ -662,8 +672,21 @@ final class AMP_Shortcodes_Module {
                     }
                     $display_name = $data['name'];
                     $safe_unit_id = sanitize_title($data['name']);
+
+                    // ==================================================
+                    // [THÊM MỚI GIAI ĐOẠN 5] LOGIC CLASS CSS CHO LIST
+                    // ==================================================
+                    $list_li_class = '';
+                    if ( ! empty( $highlight_name ) ) {
+                        if ( $data['name'] == $highlight_name ) {
+                            $list_li_class = 'hotspot-highlighted';
+                        } else {
+                            $list_li_class = 'hotspot-dimmed';
+                        }
+                    }
+                    // ==================================================
                 ?>
-                    <li>
+                    <li class="<?php echo esc_attr($list_li_class); // <-- THAY ĐỔI Ở ĐÂY ?>">
                         <<?php echo $tag; ?> <?php echo $extra_attrs; ?> class="css-hotspot hotspot-list-button" id="hotspot-list-<?php echo esc_attr($safe_unit_id); ?>"><?php echo esc_html($display_name); ?></<?php echo $tag; ?>>
                     </li>
                 <?php endforeach; ?>
