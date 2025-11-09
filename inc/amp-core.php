@@ -79,6 +79,14 @@ function tuancele_remove_unwanted_scripts_and_links() {
     remove_action( 'wp_head', 'wp_enqueue_scripts', 1 );
     remove_action( 'wp_head', 'wp_print_head_scripts', 9 );
     remove_action( 'wp_footer', 'wp_print_footer_scripts', 20 );
+
+    // [FIX V6.4 - Triệt để] Xóa hook "Skip to content" cũ và mới
+    // khỏi CẢ wp_footer VÀ wp_body_open
+    remove_action( 'wp_footer', 'the_block_template_skip_link', 1 );
+    remove_action( 'wp_body_open', 'the_block_template_skip_link', 1 );
+    remove_action( 'wp_footer', 'wp_enqueue_block_template_skip_link', 1 );
+    remove_action( 'wp_body_open', 'wp_enqueue_block_template_skip_link', 1 );
+
     remove_action( 'wp_head', 'wp_generator' );
     remove_action( 'wp_head', 'wp_shortlink_wp_head' );
     remove_action( 'wp_head', 'rsd_link' );
@@ -247,8 +255,10 @@ function amp_filter_the_content($content) {
         if (strpos($attr, 'layout=') === false) $attr .= ' layout="responsive"';
         if (strpos($attr, 'width=') === false) $attr .= ' width="600"';
         if (strpos($attr, 'height=') === false) $attr .= ' height="400"';
-        if (strpos($attr, 'sandbox=') === false) $attr .= ' sandbox="allow-scripts allow-same-origin allow-popups"';
-        if (strpos($attr, 'sandbox=') === false) $attr .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"';
+        // [ĐÃ SỬA] Gộp 2 dòng sandbox bị lỗi thành 1 dòng chính xác
+        if (strpos($attr, 'sandbox=') === false) {
+             $attr .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms"';
+        }
         return '<amp-iframe ' . $attr . '><div placeholder style="background:#f0f4f8 url(/wp-includes/images/spinner.gif) no-repeat center; background-size: 20px; display:flex; align-items:center; justify-content:center;">Loading...</div></amp-iframe>';
     }, $content);
     return $content;

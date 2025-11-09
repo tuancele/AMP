@@ -88,8 +88,8 @@ final class Tuancele_R2_Integration {
         update_option('tuancele_r2_connection_status', $status);
     }
 /**
-     * [MỚI] Tự động đổi tên file ảnh khi upload theo định dạng chuẩn.
-     * Chạy trước khi file được lưu vào thư mục uploads.
+     * [ĐÃ NÂNG CẤP] Tự động đổi tên file ảnh khi upload theo định dạng chuẩn.
+     * Đọc Tiền tố (Prefix) từ cài đặt R2 và tăng chuỗi ngẫu nhiên lên 12 ký tự.
      *
      * @param array $file Mảng thông tin file upload.
      * @return array Mảng thông tin file đã được sửa đổi.
@@ -111,29 +111,44 @@ final class Tuancele_R2_Integration {
 
         if ( in_array( $extension, $allowed_extensions ) ) {
             
-            // 1. Tạo chuỗi Ngày-Giờ-Phút-Giây
+            // 1. Lấy cài đặt R2
+            $options = get_option('tuancele_r2_settings', []);
+            $prefix = $options['rename_prefix'] ?? '';
+
+            // 2. Tạo chuỗi Ngày-Giờ-Phút-Giây
             try {
-                // Sử dụng múi giờ của WordPress
                 $datetime = new DateTime( 'now', wp_timezone() );
-                $date_str = $datetime->format( 'dmY' ); // 07112025
-                $time_str = $datetime->format( 'His' ); // 192658
+                $date_str = $datetime->format( 'dmY' ); // 09112025
+                $time_str = $datetime->format( 'His' ); // 131055 (ví dụ)
             } catch ( Exception $e ) {
-                // Fallback nếu có lỗi timezone
                 $date_str = date( 'dmY' );
                 $time_str = date( 'His' );
             }
 
-            // 2. Tạo chuỗi ngẫu nhiên 6 ký tự
-            $random_str = strtolower( substr( wp_generate_password( 12, false ), 0, 6 ) );
+            // 3. [ĐÃ SỬA] Tạo chuỗi ngẫu nhiên 12 ký tự (thay vì 6)
+            $random_str = strtolower( substr( wp_generate_password( 24, false, false ), 0, 12 ) );
 
-            // 3. Tạo tên file mới: 07112025-192658-abcdef.jpg
-            $new_name = $date_str . '-' . $time_str . '-' . $random_str . '.' . $extension;
+            // 4. [MỚI] Xây dựng tên file
+            $new_name_parts = [];
             
-            // 4. Gán tên mới cho file
+            // Thêm tiền tố (nếu có)
+            if ( ! empty( $prefix ) ) {
+                // Xóa các dấu - hoặc _ ở cuối tiền tố (nếu lỡ nhập)
+                $new_name_parts[] = rtrim( $prefix, '-_' ); 
+            }
+            
+            // Thêm ngày, giờ, và chuỗi ngẫu nhiên
+            $new_name_parts[] = $date_str;
+            $new_name_parts[] = $time_str;
+            $new_name_parts[] = $random_str;
+
+            // 5. Nối các phần lại bằng dấu gạch nối
+            $new_name = implode( '-', $new_name_parts ) . '.' . $extension;
+            
+            // 6. Gán tên mới cho file
             $file['name'] = $new_name;
         }
         
-        // Trả về file đã sửa đổi (hoặc file gốc nếu không phải ảnh)
         return $file;
     }
 

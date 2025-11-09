@@ -1,22 +1,9 @@
 <?php if ( ! defined( 'ABSPATH' ) ) { exit; } // Thêm dòng này ?>
 <?php
 /**
- * header.php - Phiên bản nâng cấp V2.
- *
- * [NÂNG CẤP MENU ĐA CẤP]
- * - Thêm script amp-accordion (được hook từ theme-setup.php).
- * - Sửa đổi <amp-sidebar> để chứa <amp-accordion>.
- * - Sử dụng Tuancele_AMP_Sidebar_Walker cho menu di động.
- * - Menu desktop (main-menu) sẽ được xử lý bằng CSS thuần.
- *
- * [KHÔI PHỤC V11 GỐC]
- * - Đã XÓA <amp-state id="tocState">.
- * - Giữ lại <div id="toc-overlay"> cho accordion.
- *
- * [NÂNG CẤP V19 - REVERT TO STICKY]
- * - Đã XÓA toàn bộ logic Smart Header (amp-animation, amp-position-observer, wrapper)
- * - Header sẽ quay lại trạng thái sticky mặc định.
- */
+* header.php - Phiên bản nâng cấp V2.
+ * [FIX] Chỉ cập nhật logic GTM/Analytics theo yêu cầu.
+*/
 
 // Lấy cài đặt A/B test 1 lần duy nhất ở đầu tệp
 $ab_test_settings = get_option('tuancele_ab_testing_settings', '');
@@ -27,162 +14,180 @@ $is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_sett
 <!doctype html>
 <html ⚡ lang="<?php bloginfo('language'); ?>">
 <head>
-    <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="manifest" href="<?php echo esc_url(home_url('/site.webmanifest')); ?>">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="<?php bloginfo('name'); ?>">
-    <link rel="apple-touch-icon" href="<?php echo esc_url(get_template_directory_uri() . '/assets/icons/apple-touch-icon.png'); ?>">
-    <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
-    <script async src="https://cdn.ampproject.org/v0.js"></script>
-    <script async custom-element="amp-form" src="https://cdn.ampproject.org/v0/amp-form-0.1.js"></script>
-    <script async custom-element="amp-sidebar" src="https://cdn.ampproject.org/v0/amp-sidebar-0.1.js"></script>
-    <script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script> 
-    <script async custom-element="amp-lightbox" src="https://cdn.ampproject.org/v0/amp-lightbox-0.1.js"></script>
-    <script async custom-template="amp-mustache" src="https://cdn.ampproject.org/v0/amp-mustache-0.2.js"></script>
-    <script async custom-element="amp-iframe" src="https://cdn.ampproject.org/v0/amp-iframe-0.1.js"></script>
-    <script async custom-element="amp-geo" src="https://cdn.ampproject.org/v0/amp-geo-0.1.js"></script>
-    <script async custom-element="amp-position-observer" src="https://cdn.ampproject.org/v0/amp-position-observer-0.1.js"></script>
-    <script async custom-element="amp-animation" src="https://cdn.ampproject.org/v0/amp-animation-0.1.js"></script>
-    <script async custom-element="amp-accordion" src="https://cdn.ampproject.org/v0/amp-accordion-0.1.js"></script>
-    <style amp-custom><?php do_action('amp_custom_css'); ?></style>
-    <script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>
-    
-    <?php // ?>
-    <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
-    
-    <?php 
-    if ( $is_ab_test_valid ) {
-        echo '<script async custom-element="amp-experiment" src="https://cdn.ampproject.org/v0/amp-experiment-0.1.js"></script>' . "\n";
-    }
-    ?>
-    
-    <?php wp_head(); ?>
+  <meta charset="<?php bloginfo('charset'); ?>">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="<?php echo esc_url(home_url('/site.webmanifest')); ?>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<?php bloginfo('name'); ?>">
+  <link rel="apple-touch-icon" href="<?php echo esc_url(get_template_directory_uri() . '/assets/icons/apple-touch-icon.png'); ?>">
+  <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
+  <script async src="https://cdn.ampproject.org/v0.js"></script>
+  <script async custom-element="amp-form" src="https://cdn.ampproject.org/v0/amp-form-0.1.js"></script>
+  <script async custom-element="amp-sidebar" src="https://cdn.ampproject.org/v0/amp-sidebar-0.1.js"></script>
+  <script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script>
+  <script async custom-element="amp-lightbox" src="https://cdn.ampproject.org/v0/amp-lightbox-0.1.js"></script>
+  <script async custom-template="amp-mustache" src="https://cdn.ampproject.org/v0/amp-mustache-0.2.js"></script>
+  <script async custom-element="amp-iframe" src="https://cdn.ampproject.org/v0/amp-iframe-0.1.js"></script>
+  <script async custom-element="amp-geo" src="https://cdn.ampproject.org/v0/amp-geo-0.1.js"></script>
+  <script async custom-element="amp-position-observer" src="https://cdn.ampproject.org/v0/amp-position-observer-0.1.js"></script>
+  <script async custom-element="amp-animation" src="https://cdn.ampproject.org/v0/amp-animation-0.1.js"></script>
+  <script async custom-element="amp-accordion" src="https://cdn.ampproject.org/v0/amp-accordion-0.1.js"></script>
+  <style amp-custom><?php do_action('amp_custom_css'); ?></style>
+  <script async custom-element="amp-recaptcha-input" src="https://cdn.ampproject.org/v0/amp-recaptcha-input-0.1.js"></script>
+ 
+  <?php // ?>
+  <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
+ 
+  <?php
+  if ( $is_ab_test_valid ) {
+    echo '<script async custom-element="amp-experiment" src="https://cdn.ampproject.org/v0/amp-experiment-0.1.js"></script>' . "\n";
+  }
+  ?>
+ 
+  <?php wp_head(); ?>
 </head>
 
 <body <?php body_class(); ?>>
 
 <?php // [ĐÃ XÓA] 2 khối <amp-animation> ?>
 
-<?php 
-// $integration_options = get_option('tuancele_integrations_settings', []);
-$ga4_id = $integration_options['ga4_measurement_id'] ?? 'G-KJEEPYVTBR';
+<?php
+// =========================================================================
+// [BẮT ĐẦU FIX GTM/ANALYTICS]
+// =========================================================================
 
-if ( ! empty( $ga4_id ) ) : 
+// Lấy cài đặt GTM và GA4 từ options
+$integration_options = get_option('tuancele_integrations_settings', []);
+$gtm_id = $integration_options['gtm_id'] ?? '';
+$ga4_id = $integration_options['ga4_measurement_id'] ?? ''; // Lấy ID GA4 (đã xóa default)
+
+// Ưu tiên GTM ID, nếu không có thì mới dùng GA4 ID
+$main_tracking_id = ! empty( $gtm_id ) ? $gtm_id : $ga4_id;
+
+// Chỉ in khối <amp-analytics> nếu có ID (GTM hoặc GA4)
+if ( ! empty( $main_tracking_id ) ) : 
 ?>
 <amp-analytics type="gtag" data-credentials="include">
 <script type="application/json">
 {
-  "vars": {
-    "gtag_id": "<?php echo esc_js( $ga4_id ); ?>",
-    "config": {
-      "<?php echo esc_js( $ga4_id ); ?>": { "groups": "default" }
-    }
+ "vars": {
+  "gtag_id": "<?php echo esc_js( $main_tracking_id ); ?>",
+  "config": {
+   "<?php echo esc_js( $main_tracking_id ); ?>": { "groups": "default" }
+  }
+ },
+ <?php // [SỬA LỖI] Luôn thêm trigger "pageview" mặc định ?>
+ "triggers": {
+  "defaultPageview": {
+   "on": "visible",
+   "request": "pageview"
   }
   <?php 
-  // [CẬP NHẬT] Tự động thêm triggers nếu A/B test được bật
+  // Gộp trigger A/B test (nếu có)
   if ( $is_ab_test_valid ) : 
   ?>
-  ,"triggers": {
-    "trackExperimentView": {
-      "on": "amp-experiment.view",
-      "vars": {
-        "event_name": "experiment_view",
-        "event_category": "AMP Experiment",
-        "experiment_name": "VARIANT.experiment",
-        "variant_name": "VARIANT.variant"
-      }
-    }
+  ,"trackExperimentView": {
+   "on": "amp-experiment.view",
+   "request": "event",
+   "vars": {
+    "event_name": "experiment_view",
+    "event_category": "AMP Experiment"
+    <?php // AMP tự động thêm "experiment_name" và "variant_name" ?>
+   }
   }
   <?php endif; // Kết thúc A/B test triggers ?>
+ }
 }
 </script>
 </amp-analytics>
-<?php 
-endif; 
-// ?>
+<?php
+endif;
+// =========================================================================
+// [KẾT THÚC FIX GTM/ANALYTICS]
+// =========================================================================
+?>
 
-    <amp-state id="pwaStatus">
-        <script type="application/json">
-            {"bannerDismissed": false}
-        </script>
-    </amp-state>
+  <amp-state id="pwaStatus">
+    <script type="application/json">
+      {"bannerDismissed": false}
+    </script>
+  </amp-state>
 
-    <amp-geo layout="nodisplay">
-        </amp-geo>
-    
-    <div id="toc-overlay" on="tap:tocAccordion.toggle" role="button" tabindex="-1" aria-label="Đóng Mục lục" hidden></div>
-    
-    <amp-sidebar id="my-sidebar" layout="nodisplay" side="left">
-        <nav>
-            <?php 
-            // Kiểm tra xem có menu 'primary' và class Walker đã tồn tại chưa
-            if ( has_nav_menu('primary') && class_exists('Tuancele_AMP_Sidebar_Walker') ) {
-                echo '<amp-accordion>'; // Bọc menu trong accordion
-                
-                wp_nav_menu([
-                    'theme_location' => 'primary', 
-                    'container'      => false,
-                    'items_wrap'     => '%3$s', // Chỉ xuất ra nội dung, không bọc <ul>
-                    'walker'         => new Tuancele_AMP_Sidebar_Walker() // Sử dụng Walker mới
-                ]);
-                
-                echo '</amp-accordion>';
-            } elseif ( has_nav_menu('primary') ) {
-                // Fallback nếu class Walker bị lỗi
-                wp_nav_menu(['theme_location' => 'primary', 'container' => false]);
-            }
-            ?>
-        </nav>
-    </amp-sidebar>
+  <amp-geo layout="nodisplay">
+    </amp-geo>
 
-    <div class="pwa-install-banner-wrapper" 
-         [hidden]="pwaStatus.bannerDismissed"
-         hidden>
-        <div class="container pwa-banner-content">
-            <p>
-                Tải ứng dụng **<?php bloginfo('name'); ?>** để truy cập nhanh!
-            </p>
-            <button id="pwa-install-button" class="pwa-banner-button menu-button" aria-label="Cài đặt ứng dụng">
-                Cài đặt ngay
-            </button>
-            
-            <button on="tap:AMP.setState({ pwaStatus: { bannerDismissed: true } })" 
-                    class="pwa-dismiss-button" aria-label="Tắt banner">
-                &times;
-            </button>
-        </div>
+  <div id="toc-overlay" on="tap:tocAccordion.toggle" role="button" tabindex="-1" aria-label="Đóng Mục lục" hidden></div>
+ 
+  <amp-sidebar id="my-sidebar" layout="nodisplay" side="left">
+    <nav>
+      <?php
+      // Kiểm tra xem có menu 'primary' và class Walker đã tồn tại chưa
+      if ( has_nav_menu('primary') && class_exists('Tuancele_AMP_Sidebar_Walker') ) {
+        echo '<amp-accordion>'; // Bọc menu trong accordion
+       
+        wp_nav_menu([
+          'theme_location' => 'primary',
+          'container'   => false,
+          'items_wrap'  => '%3$s', // Chỉ xuất ra nội dung, không bọc <ul>
+          'walker'    => new Tuancele_AMP_Sidebar_Walker() // Sử dụng Walker mới
+        ]);
+       
+        echo '</amp-accordion>';
+      } elseif ( has_nav_menu('primary') ) {
+        // Fallback nếu class Walker bị lỗi
+        wp_nav_menu(['theme_location' => 'primary', 'container' => false]);
+      }
+      ?>
+    </nav>
+  </amp-sidebar>
+
+  <div class="pwa-install-banner-wrapper"
+    [hidden]="pwaStatus.bannerDismissed"
+    hidden>
+    <div class="container pwa-banner-content">
+      <p>
+        Tải ứng dụng **<?php bloginfo('name'); ?>** để truy cập nhanh!
+      </p>
+      <button id="pwa-install-button" class="pwa-banner-button menu-button" aria-label="Cài đặt ứng dụng">
+        Cài đặt ngay
+      </button>
+     
+      <button on="tap:AMP.setState({ pwaStatus: { bannerDismissed: true } })"
+          class="pwa-dismiss-button" aria-label="Tắt banner">
+        &times;
+      </button>
     </div>
-    
-    <?php // [ĐÃ XÓA] Wrapper .smart-header-wrapper ?>
-    <header id="page-top">
-        <div class="container header-container">
-            <div class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a></div>
-            <link rel="preload" href="<?php echo esc_url(get_template_directory_uri() . '/assets/fonts/poppins-v20-700.woff2'); ?>" as="font" type="font/woff2" crossorigin="anonymous">
-            
-            <?php // --- SỬA ĐỔI MENU DESKTOP --- ?>
-            <nav class="main-menu">
-                <?php 
-                // Menu desktop không cần walker, chỉ cần CSS
-                wp_nav_menu([
-                    'theme_location' => 'primary', 
-                    'container' => false 
-                ]); 
-                ?>
-            </nav>
-            <?php // --- KẾT THÚC SỬA ĐỔI MENU DESKTOP --- ?>
-            
-            <button on="tap:my-sidebar.toggle" class="menu-button" aria-label="Open menu">☰</button>
-        </div>
-    </header>
-    <?php 
-    echo do_shortcode('[amp_event_bar]');
-    ?>
-    
-    <?php // [ĐÃ XÓA] <amp-position-observer> của Smart Header ?>
+  </div>
+ 
+  <?php // [ĐÃ XÓA] Wrapper .smart-header-wrapper ?>
+  <header id="page-top">
+    <div class="container header-container">
+      <div class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>"><?php bloginfo('name'); ?></a></div>
+      <link rel="preload" href="<?php echo esc_url(get_template_directory_uri() . '/assets/fonts/poppins-v20-700.woff2'); ?>" as="font" type="font/woff2" crossorigin="anonymous">
+     
+      <?php // --- SỬA ĐỔI MENU DESKTOP --- ?>
+      <nav class="main-menu">
+        <?php
+        // Menu desktop không cần walker, chỉ cần CSS
+        wp_nav_menu([
+          'theme_location' => 'primary',
+          'container' => false
+        ]);
+        ?>
+      </nav>
+      <?php // --- KẾT THÚC SỬA ĐỔI MENU DESKTOP --- ?>
+     
+      <button on="tap:my-sidebar.toggle" class="menu-button" aria-label="Open menu">☰</button>
+    </div>
+  </header>
+  <?php
+  echo do_shortcode('[amp_event_bar]');
+  ?>
+ 
+  <?php // [ĐÃ XÓA] <amp-position-observer> của Smart Header ?>
 
-    <?php // [ĐÃ XÓA] <div id="btt-trigger"> ?>
+  <?php // [ĐÃ XÓA] <div id="btt-trigger"> ?>
 
-    <div class="site-content-wrapper"><main class="container">
+  <div class="site-content-wrapper"><main class="container">

@@ -31,7 +31,8 @@ add_filter('the_content', 'tuancele_wrap_tables_in_div', 20);
  * Tự động chèn hộp đánh giá (rating box) vào cuối nội dung bài viết.
  */
 function tuancele_append_auto_rating_box( $content ) {
-    if ( is_singular() && in_the_loop() && is_main_query() ) {
+    // [ĐÃ SỬA] Thêm điều kiện để không tự động chạy trên CPT 'property'
+    if ( is_singular() && in_the_loop() && is_main_query() && get_post_type() !== 'property' ) {
         $post_id = get_the_ID();
         $rating_count = get_post_meta( $post_id, '_post_view_count', true ) ?: 1;
         $rating_value = 5.0; $percentage = ($rating_value / 5) * 100;

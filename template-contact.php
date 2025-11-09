@@ -78,7 +78,7 @@ $has_content = have_posts() && get_the_content();
         <div class="contact-map-col">
             <h3 class="contact-box-title">Vị trí trên bản đồ</h3>
             <amp-iframe width="600" height="400" layout="responsive" 
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
                         src="<?php echo esc_url($map_embed_url); ?>"
                         frameborder="0">
                 <div placeholder class="map-placeholder">Đang tải bản đồ...</div>

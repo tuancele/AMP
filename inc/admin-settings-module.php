@@ -184,19 +184,36 @@ final class AMP_Admin_Settings_Module {
         add_settings_field('zoho_xnqsjsdp', 'Zoho Key (xnQsjsdp)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xnqsjsdp']);
         add_settings_field('zoho_xmiwtld', 'Zoho Key (xmIwtLD)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xmiwtld']);
         
-        add_settings_section('tuancele_integrations_ga4_section', 'Tích hợp Google Analytics (GA4)', null, 'tuancele-amp-integrations');
+        add_settings_section('tuancele_integrations_gtm_section', 'Tích hợp Google (GA4 & GTM)', null, 'tuancele-amp-integrations');
+        
+        // Trường GTM (MỚI)
         add_settings_field(
-            'ga4_measurement_id', 
-            'Mã theo dõi (Measurement ID)', 
+            'gtm_id', 
+            'Google Tag Manager ID (GTM)', 
             [ $this, 'integrations_field_callback' ], 
             'tuancele-amp-integrations', 
-            'tuancele_integrations_ga4_section', 
+            'tuancele_integrations_gtm_section', 
+            [
+                'id' => 'gtm_id', 
+                'type' => 'text', 
+                'placeholder' => 'GTM-XXXXXXX',
+                'desc' => 'Nhập GTM ID của bạn. Đây là cách được khuyến nghị. Bạn sẽ cấu hình GA4, Facebook Pixel... bên trong GTM.'
+            ]
+        );
+
+        // Trường GA4 (Cũ - giữ lại làm fallback)
+            add_settings_field(
+            'ga4_measurement_id', 
+            'Mã theo dõi GA4 (Fallback)', 
+            [ $this, 'integrations_field_callback' ], 
+            'tuancele-amp-integrations', 
+            'tuancele_integrations_gtm_section', 
             [
                 'id' => 'ga4_measurement_id', 
                 'type' => 'text', 
                 'placeholder' => 'G-XXXXXXXXXX',
-                'default' => 'G-KJEEPYVTBR', 
-                'desc' => 'Nhập mã GA4 của bạn (ví dụ: G-KJEEPYVTBR). Mã này sẽ được chèn vào <head>.'
+                // [ĐÃ XÓA] Dòng 'default'
+                'desc' => 'CHỈ SỬ DỤNG nếu bạn KHÔNG dùng GTM. Nếu đã điền GTM ID ở trên, hãy xóa trống ô này.'
             ]
         );
 
@@ -368,7 +385,20 @@ final class AMP_Admin_Settings_Module {
 
         register_setting('tuancele_amp_r2_group', 'tuancele_r2_settings');
         add_settings_section('tuancele_r2_settings_section', 'Thông tin kết nối Cloudflare R2', [ $this, 'r2_section_callback' ], 'tuancele-amp-r2');
-        $r2_fields = ['enable_r2' => ['label' => 'Kích hoạt R2', 'type' => 'checkbox'], 'access_key_id' => ['label' => 'Access Key ID'], 'secret_access_key' => ['label' => 'Secret Access Key', 'type' => 'password'], 'bucket' => ['label' => 'Tên Bucket'], 'endpoint' => ['label' => 'Endpoint'], 'public_url' => ['label' => 'Public URL'], 'delete_local_file' => ['label' => 'Xóa file gốc', 'type' => 'checkbox'], 'enable_webp_conversion' => ['label' => 'Chuyển sang WebP', 'type' => 'checkbox']];
+        $r2_fields = [
+            'enable_r2' => ['label' => 'Kích hoạt R2', 'type' => 'checkbox'], 
+            'rename_prefix' => [ // <-- BẮT ĐẦU KHỐI MỚI
+                'label' => 'Tiền tố Đổi tên File', 
+                'desc' => 'Ví dụ: "booyoung". Tên file sẽ là: booyoung-09112025-131055-abcd1234efgh.jpg<br>Để trống để dùng định dạng mặc định (không có tiền tố).'
+            ], // <-- KẾT THÚC KHỐI MỚI
+            'access_key_id' => ['label' => 'Access Key ID'], 
+            'secret_access_key' => ['label' => 'Secret Access Key', 'type' => 'password'], 
+            'bucket' => ['label' => 'Tên Bucket'], 
+            'endpoint' => ['label' => 'Endpoint'], 
+            'public_url' => ['label' => 'Public URL'], 
+            'delete_local_file' => ['label' => 'Xóa file gốc', 'type' => 'checkbox'], 
+            'enable_webp_conversion' => ['label' => 'Chuyển sang WebP', 'type' => 'checkbox']
+        ];
         foreach ($r2_fields as $id => $field) add_settings_field('tuancele_r2_' . $id, $field['label'], [ $this, 'r2_field_callback' ], 'tuancele-amp-r2', 'tuancele_r2_settings_section', array_merge($field, ['id' => $id]));
         add_settings_section('tuancele_r2_migration_section', 'Công cụ Di chuyển Dữ liệu cũ', [ $this, 'r2_migration_section_callback' ], 'tuancele-amp-r2');
         add_settings_field('tuancele_r2_migration_tool', 'Trạng thái & Hành động', [ $this, 'r2_migration_tool_callback' ], 'tuancele-amp-r2', 'tuancele_r2_migration_section');

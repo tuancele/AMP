@@ -13,6 +13,10 @@
  *
  * [KHÔI PHỤC V11 GỐC]
  * - Khôi phục logic animation và position observer cho thanh tiến trình.
+ *
+ * [NÂNG CẤP MỚI]
+ * - Thêm khối "Thông tin Dự án" (nếu có).
+ * - Di chuyển Hộp Rating (đã bị gỡ khỏi filter) xuống dưới cùng.
  */
 
 get_header();
@@ -169,6 +173,39 @@ get_header();
         // [KẾT THÚC CẬP NHẬT]
         // ==================================================
         
+        
+        // ==================================================
+        // [THÊM MỚI] HIỂN THỊ THÔNG TIN DỰ ÁN LIÊN QUAN
+        // ==================================================
+        if ( $project_id > 0 ) {
+            $project_query_args = [
+                'p' => $project_id,
+                'post_type' => 'any',
+                'posts_per_page' => 1
+            ];
+            $project_query = new WP_Query( $project_query_args );
+
+            if ( $project_query->have_posts() ) {
+        ?>
+                <section class="related-posts-section project-info-section"> 
+                    <h2 class="related-posts-title">Thông tin Dự án</h2>
+                    <div class="main-post-wrapper"> 
+                        <?php 
+                        while ( $project_query->have_posts() ) : $project_query->the_post(); 
+                            get_template_part('template-parts/content-card');
+                        endwhile; 
+                        ?>
+                    </div>
+                </section>
+        <?php
+                wp_reset_postdata(); 
+            }
+        }
+        // ==================================================
+        // [KẾT THÚC THÊM MỚI]
+        // ==================================================
+
+        
         // 6. Hiển thị Form đăng ký
         echo '<h2>Đăng ký nhận tư vấn</h2>';
         echo do_shortcode( '[form_dang_ky tieu_de="Nhận báo giá & Ưu đãi mới nhất" nut_gui="Gửi thông tin ngay"]' );
@@ -181,11 +218,38 @@ get_header();
 <?php endif; ?>
 
 <?php 
-// [ĐÃ SỬA] Gọi hàm mới cho Tin BĐS liên quan
+// 7. [ĐÃ SỬA] HIỂN THỊ TIN BĐS LIÊN QUAN
 if (function_exists('tuancele_display_related_properties')) { 
     tuancele_display_related_properties(); 
 } 
 ?>
+
+<?php
+// ==================================================
+// [THÊM MỚI] HIỂN THỊ HỘP RATING (ĐÃ DI CHUYỂN)
+// ==================================================
+// Code này được sao chép từ inc/helpers/content-filters.php
+// $post_id đã được định nghĩa ở trên
+$rating_count = get_post_meta( $post_id, '_post_view_count', true ) ?: 1;
+$rating_value = 5.0; $percentage = ($rating_value / 5) * 100;
+?>
+<div class="rating-box">
+    <div class="star-rating" title="Đánh giá: <?php echo esc_attr($rating_value); ?> trên 5 sao">
+        <div class="star-rating-background"><?php for ($i=0; $i<5; $i++) echo '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'; ?></div>
+        <div class="star-rating-foreground" style="width: <?php echo esc_attr($percentage); ?>%;"><?php for ($i=0; $i<5; $i++) echo '<svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'; ?></div>
+    </div>
+    <div class="rating-text"><strong><?php echo esc_html($rating_value); ?></strong>/5 sao (<?php echo esc_html( number_format_i18n($rating_count) ); ?> đánh giá)</div>
+</div>
+<?php 
+// Schema cho rating này đã được tự động thêm vào $GLOBALS['page_specific_schema']
+// cùng với schema RealEstateListing (ở đầu file), nên chúng ta không cần
+// thêm thẻ <script> ld+json ở đây.
+// ==================================================
+// [KẾT THÚC DI CHUYỂN RATING]
+// ==================================================
+?>
+
+
 <?php if ( comments_open() || get_comments_number() ) : comments_template(); endif; ?>
 
 <?php
