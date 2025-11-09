@@ -450,6 +450,103 @@ function tuancele_load_conditional_css() {
     }
 
     // --- [KẾT THÚC KHỐI MỚI] ---
+
+    // 12. NẠP CSS CHO TRANG CẢM ƠN (page-camon.php)
+    if ( is_page_template('page-camon.php') ) {
+        $css_content = "
+            .thank-you-wrapper { display: flex; align-items: center; justify-content: center; padding: 50px 20px; min-height: 60vh; background-color: #f4f7f6; }
+            .thank-you-container { text-align: center; padding: 40px 30px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); max-width: 550px; width: 100%; border-top: 5px solid #28a745; transform: translateY(-20px); animation: fadeInUp 0.5s ease-out forwards; }
+            @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+            .thank-you-icon { display: inline-block; width: 80px; height: 80px; background-color: #28a745; border-radius: 50%; position: relative; }
+            .thank-you-icon::after { content: ''; position: absolute; left: 28px; top: 15px; width: 20px; height: 40px; border: solid white; border-width: 0 6px 6px 0; transform: rotate(45deg); }
+            .thank-you-title { font-size: 28px; color: #333; margin: 25px 0 15px 0; font-weight: 700; }
+            .thank-you-message { font-size: 18px; color: #666; line-height: 1.7; }
+            .thank-you-back-home { display: inline-block; margin-top: 30px; padding: 14px 35px; background-color: var(--mau-chinh, #0073e6); color: #fff; text-decoration: none; border-radius: 50px; font-weight: 700; transition: transform 0.2s, box-shadow 0.2s; border: none; box-shadow: 0 4px 15px rgba(0, 115, 230, 0.4); }
+            .thank-you-back-home:hover { transform: translateY(-3px); box-shadow: 0 7px 20px rgba(0, 115, 230, 0.5); color: #fff; text-decoration: none; }
+            @media (max-width: 768px) { .thank-you-wrapper { padding: 30px 15px; } .thank-you-title { font-size: 24px; } .thank-you-message { font-size: 16px; } }
+        ";
+        echo $css_content;
+    }
+
+    // 13. NẠP CSS CHO SHORTCODE [schema_faq] VÀ [schema_howto]
+    if ( is_singular() && ( has_shortcode( $content, 'schema_faq' ) || has_shortcode( $content, 'schema_howto' ) ) ) {
+        $css_content = "
+            /* === CSS CHO FAQ ACCORDION === */
+            .faq-container { margin: 40px 0; border-top: 1px solid #e0e0e0; }
+            .faq-container amp-accordion section { margin-bottom: 0; }
+            .faq-question { background-color: #f9f9f9; padding: 15px 20px; margin: 0; font-size: 18px; font-weight: 700; border-bottom: 1px solid #e0e0e0; cursor: pointer; position: relative; }
+            .faq-question:hover { background-color: #f1f1f1; }
+            .faq-question::after { content: '+'; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 24px; font-weight: 400; color: var(--mau-chinh); }
+            .faq-container amp-accordion section[expanded] > .faq-question::after { content: '−'; }
+            .faq-answer { padding: 20px; background-color: #ffffff; border-bottom: 1px solid #e0e0e0; }
+            .faq-answer p:first-child { margin-top: 0; }
+            .faq-answer p:last-child { margin-bottom: 0; }
+
+            /* === CSS CHO HOWTO === */
+            .howto-container { margin: 40px 0; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fcfcfc; }
+            .howto-title { font-size: 24px; margin-top: 0; margin-bottom: 20px; color: var(--mau-chu); }
+            .howto-steps { padding-left: 20px; margin: 0; }
+            .howto-steps li { margin-bottom: 20px; }
+            .howto-steps li:last-child { margin-bottom: 0; }
+            .howto-step-title { display: block; font-size: 18px; margin-bottom: 5px; color: var(--mau-chu); }
+            .howto-steps div p { margin: 0; }
+        ";
+        echo $css_content;
+    }
+
+    // 14. NẠP CSS CHO HỘP ĐÁNH GIÁ (RATING BOX)
+    // Được sử dụng bởi hàm auto-rating và shortcode [amp_product]
+    if ( is_singular() ) {
+        $css_content = "
+            /* === CSS CHO SCHEMA RATING (STARS) === */
+            .rating-box {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px 12px;
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 8px;
+                padding: 15px 20px;
+                margin: 30px 0;
+            }
+            .star-rating {
+                position: relative;
+                display: inline-block;
+                height: 24px;
+                line-height: 24px;
+            }
+            .star-rating-background,
+            .star-rating-foreground {
+                display: flex;
+            }
+            .star-rating-background {
+                color: #ccc;
+            }
+            .star-rating-foreground {
+                position: absolute;
+                top: 0;
+                left: 0;
+                color: #ffb400;
+                overflow: hidden;
+                white-space: nowrap;
+            }
+            .star-rating svg {
+                width: 24px;
+                height: 24px;
+                fill: currentColor;
+                flex-shrink: 0;
+            }
+            .rating-text {
+                font-size: 0.95rem;
+                color: #495057;
+            }
+            .rating-text strong {
+                color: #212529;
+            }
+        ";
+        echo $css_content;
+    }
 }
 // Hook hàm mới vào 'amp_custom_css' với độ ưu tiên 11 (chạy sau hàm gốc)
 add_action('amp_custom_css', 'tuancele_load_conditional_css', 11);

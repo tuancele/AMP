@@ -7,6 +7,11 @@
  * - Sửa shortcode [amp_imagemap] để chấp nhận thuộc tính 'highlight'.
  * - Thêm logic để gán class 'hotspot-highlighted' và 'hotspot-dimmed'
  * cho cả hotspot trên ảnh và hotspot trong danh sách.
+ *
+ * [NÂNG CẤP SCHEMA TIMELINE]
+ * - Cập nhật hàm [timeline_item] để tự động điền các trường Schema
+ * (organizer, performer, location, offers, image) từ cài đặt toàn cục
+ * nhằm đáp ứng yêu cầu của Google và đơn giản hóa shortcode.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -43,12 +48,12 @@ final class AMP_Shortcodes_Module {
         add_shortcode('amp_event_bar', [ $this, 'amp_event_bar' ]);
         
        // Đảm bảo 2 dòng này tồn tại
-    add_shortcode('ab_test_wrapper', [ $this, 'ab_test_wrapper' ]);
-    add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
-    // --- [THÊM MỚI TẠI ĐÂY] ---
-    add_shortcode('timeline', [ $this, 'timeline_wrapper' ]);
-    add_shortcode('timeline_item', [ $this, 'timeline_item' ]);
-    // --- [KẾT THÚC THÊM MỚI] ---
+        add_shortcode('ab_test_wrapper', [ $this, 'ab_test_wrapper' ]);
+        add_shortcode('ab_test_variant', [ $this, 'ab_test_variant' ]);
+        // --- [THÊM MỚI TẠI ĐÂY] ---
+        add_shortcode('timeline', [ $this, 'timeline_wrapper' ]);
+        add_shortcode('timeline_item', [ $this, 'timeline_item' ]); // <-- SẼ SỬA HÀM NÀY
+        // --- [KẾT THÚC THÊM MỚI] ---
         
         // Hook tự động chèn quảng cáo nội bộ
         add_filter('the_content', [ $this, 'auto_inject_internal_ad' ], 10);
@@ -838,93 +843,158 @@ public function timeline_wrapper($atts, $content = null) {
 }
 
 /**
-     * SHORTCODE [timeline_item] (Con)
-     * Tạo một mốc trên timeline.
-     * [NÂNG CẤP] Tự động tạo và thêm Schema Event vào $GLOBALS.
-     */
-    public function timeline_item($atts, $content = null) {
-        // Các thuộc tính shortcode cho phép:
-        $atts = shortcode_atts([
-            'date'         => 'Chưa cập nhật',
-            'title'        => 'Cột mốc mới',
-            'image_id'     => '', // ID của ảnh trong Media Library
-            'status'       => 'pending', // Trạng thái: 'completed', 'ongoing', 'pending'
-            'schema_date'  => '', // [MỚI] Ngày tháng theo chuẩn ISO (2025-10-01)
-        ], $atts, 'timeline_item');
+ * SHORTCODE [timeline_item] (Con)
+ * Tạo một mốc trên timeline.
+ * [NÂNG CẤP] Tự động tạo và thêm Schema Event (ĐÃ CẬP NHẬT)
+ */
+public function timeline_item($atts, $content = null) {
+    // Các thuộc tính shortcode cho phép:
+    $atts = shortcode_atts([
+        'date'         => 'Chưa cập nhật',
+        'title'        => 'Cột mốc mới',
+        'image_id'     => '', // ID của ảnh trong Media Library
+        'status'       => 'pending', // Trạng thái: 'completed', 'ongoing', 'pending'
+        'schema_date'  => '', // Ngày tháng theo chuẩn ISO (2025-10-01)
+    ], $atts, 'timeline_item');
 
-        // Xử lý ảnh (nếu có)
-        $image_html = '';
-        $image_url = ''; // Biến để lưu URL ảnh cho schema
-        if ( ! empty($atts['image_id']) ) {
-            // Lấy ảnh kích thước 'large' (bạn có thể đổi sang 'medium' nếu muốn)
-            $image_data = wp_get_attachment_image_src( $atts['image_id'], 'large' ); 
-            if ($image_data) {
-                $image_url = esc_url($image_data[0]); // Lưu URL cho schema
-                $image_alt = get_post_meta( $atts['image_id'], '_wp_attachment_image_alt', true ) ?: $atts['title'];
-                $image_html = '<div class="timeline-image">
-                                <amp-img src="' . $image_url . '" 
-                                         width="' . esc_attr($image_data[1]) . '" 
-                                         height="' . esc_attr($image_data[2]) . '" 
-                                         layout="responsive" 
-                                         alt="' . esc_attr($image_alt) . '"></amp-img>
-                              </div>';
+    // --- [BẮT ĐẦU LOGIC NÂNG CẤP] ---
+    
+    // === TẢI DỮ LIỆU CHUNG ===
+    // 1. Lấy cài đặt Schema toàn cục
+    $schema_options = get_option('tuancele_amp_schema_options', []);
+    
+    // 2. Lấy ID của post/page hiện tại (nơi shortcode được gọi)
+    $current_post_id = get_the_ID();
+    
+    // 3. Lấy URL trang chủ (dùng cho @id)
+    $home_url = home_url( '/' );
+
+    // === XỬ LÝ ẢNH (LOGIC KẾT HỢP) ===
+    $image_html = '';
+    $schema_image_url = ''; // Biến chỉ dành cho Schema
+    
+    // Ưu tiên 1: Lấy ảnh từ image_id="" của shortcode (cho cả HTML và Schema)
+    if ( ! empty($atts['image_id']) ) {
+        $image_data = wp_get_attachment_image_src( $atts['image_id'], 'large' ); 
+        if ($image_data) {
+            $schema_image_url = esc_url($image_data[0]); // Lưu URL cho schema
+            $image_alt = get_post_meta( $atts['image_id'], '_wp_attachment_image_alt', true ) ?: $atts['title'];
+            // Tạo HTML để hiển thị
+            $image_html = '<div class="timeline-image">
+                            <amp-img src="' . $schema_image_url . '" 
+                                     width="' . esc_attr($image_data[1]) . '" 
+                                     height="' . esc_attr($image_data[2]) . '" 
+                                     layout="responsive" 
+                                     alt="' . esc_attr($image_alt) . '"></amp-img>
+                          </div>';
+        }
+    } else {
+        // Fallback (HTML): Không hiển thị ảnh
+        $image_html = ''; 
+        
+        // Fallback (Schema): Lấy ảnh đại diện của post/page
+        if ( has_post_thumbnail($current_post_id) ) {
+            $thumb_url = get_the_post_thumbnail_url($current_post_id, 'large');
+            if ($thumb_url) {
+                $schema_image_url = $thumb_url;
             }
         }
+    }
 
-        // Xử lý nội dung mô tả (cho phép dùng shortcode con bên trong)
-        $content_html = wpautop( do_shortcode( $content ) );
-        
-        // Lấy class CSS dựa trên trạng thái
-        $status_class = 'status-' . sanitize_html_class($atts['status']); // vd: 'status-completed'
+    // Xử lý nội dung mô tả (cho phép dùng shortcode con bên trong)
+    $content_html = wpautop( do_shortcode( $content ) );
+    
+    // Lấy class CSS dựa trên trạng thái
+    $status_class = 'status-' . sanitize_html_class($atts['status']); // vd: 'status-completed'
 
-        // --- [LOGIC SCHEMA MỚI] ---
-        // 1. Tạo schema Event cơ bản
-        $schema = [
-            '@type'       => 'Event',
-            'name'        => esc_html($atts['title']),
-            'description' => wp_strip_all_tags($content_html),
+    // === XÂY DỰNG MẢNG SCHEMA ===
+    // 1. Tạo schema Event cơ bản
+    $schema = [
+        '@type'       => 'Event',
+        'name'        => esc_html($atts['title']),
+        'description' => wp_strip_all_tags($content_html),
+    ];
+
+    // 2. Map trạng thái (status)
+    $status_map = [
+        'completed' => 'https://schema.org/EventCompleted',
+        'ongoing'   => 'https://schema.org/EventScheduled',
+        'pending'   => 'https://schema.org/EventScheduled',
+    ];
+    $schema['eventStatus'] = $status_map[$atts['status']] ?? $status_map['pending'];
+
+    // 3. Thêm ngày bắt đầu (nếu có)
+    if ( ! empty($atts['schema_date']) ) {
+        $schema['startDate'] = $atts['schema_date'];
+    }
+
+    // 4. Thêm ảnh (ĐÃ QUA LOGIC KẾT HỢP)
+    if ( ! empty($schema_image_url) ) {
+        $schema['image'] = $schema_image_url;
+    }
+
+    // 5. [MỚI] Tự động thêm Organizer
+    $schema['organizer'] = [
+        '@type' => $schema_options['organization_type'] ?? 'Corporation',
+        '@id'   => $home_url . '#corporation', // Tham chiếu đến Schema Corporation
+        'name'  => $schema_options['name'] ?? get_bloginfo('name'),
+        'url'   => $home_url,
+    ];
+
+    // 6. [MỚI] Tự động thêm Performer (lấy theo tên organizer)
+    $schema['performer'] = [
+        '@type' => 'PerformingGroup', // Hoặc 'Organization'
+        'name'  => $schema_options['name'] ?? get_bloginfo('name'),
+    ];
+
+    // 7. [MỚI] Tự động thêm Location
+    $location_address = [
+        '@type'           => 'PostalAddress',
+        'streetAddress'   => $schema_options['streetAddress'] ?? '',
+        'addressLocality' => $schema_options['addressLocality'] ?? '',
+        'addressRegion'   => $schema_options['addressRegion'] ?? '',
+        'postalCode'      => $schema_options['postalCode'] ?? '',
+        'addressCountry'  => 'VN'
+    ];
+    // Chỉ thêm location nếu có ít nhất 1 trường địa chỉ
+    if ( !empty($location_address['streetAddress']) || !empty($location_address['addressLocality']) ) {
+        $schema['location'] = [
+            '@type'   => 'Place',
+            'name'    => $schema_options['name'] ?? get_bloginfo('name'), // Lấy tên địa điểm là tên công ty
+            'address' => $location_address,
         ];
+    }
 
-        // 2. Map trạng thái (status) sang EventStatusType
-        $status_map = [
-            'completed' => 'https://schema.org/EventCompleted',
-            'ongoing'   => 'https://schema.org/EventScheduled', // Đang diễn ra, vẫn là "Scheduled"
-            'pending'   => 'https://schema.org/EventScheduled', // Sắp diễn ra
-        ];
-        $schema['eventStatus'] = $status_map[$atts['status']] ?? $status_map['pending'];
+    // 8. [MỚI] Tự động thêm Offers (miễn phí)
+    $schema['offers'] = [
+        '@type'         => 'Offer',
+        'price'         => '0',
+        'priceCurrency' => 'VND',
+        'availability'  => 'https://schema.org/InStock',
+        'url'           => get_permalink($current_post_id), // Link của ưu đãi là link bài viết
+    ];
+    
+    // 9. Thêm vào mảng schema toàn cục
+    if ( ! isset( $GLOBALS['page_specific_schema'] ) ) {
+        $GLOBALS['page_specific_schema'] = [];
+    }
+    $GLOBALS['page_specific_schema'][] = $schema;
+    // --- [KẾT THÚC LOGIC SCHEMA NÂNG CẤP] ---
 
-        // 3. Thêm ngày bắt đầu (nếu có)
-        if ( ! empty($atts['schema_date']) ) {
-            $schema['startDate'] = $atts['schema_date'];
-        }
-
-        // 4. Thêm ảnh (nếu có)
-        if ( ! empty($image_url) ) {
-            $schema['image'] = $image_url;
-        }
-
-        // 5. Thêm vào mảng schema toàn cục
-        // Tệp inc/seo-module.php sẽ tự động đọc biến $GLOBALS này
-        if ( ! isset( $GLOBALS['page_specific_schema'] ) ) {
-            $GLOBALS['page_specific_schema'] = [];
-        }
-        $GLOBALS['page_specific_schema'][] = $schema;
-        // --- [KẾT THÚC LOGIC SCHEMA] ---
-
-        ob_start();
-        ?>
-        <div class="timeline-item <?php echo $status_class; ?>">
-            <div class="timeline-dot"></div>
-            <div class="timeline-date"><?php echo esc_html($atts['date']); ?></div>
-            <div class="timeline-content">
-                <h4><?php echo esc_html($atts['title']); ?></h4>
-                <?php if (!empty($image_html)) echo $image_html; ?>
-                <div class="timeline-description">
-                    <?php echo $content_html; // Đã wpautop ?>
-                </div>
+    ob_start();
+    ?>
+    <div class="timeline-item <?php echo $status_class; ?>">
+        <div class="timeline-dot"></div>
+        <div class="timeline-date"><?php echo esc_html($atts['date']); ?></div>
+        <div class="timeline-content">
+            <h4><?php echo esc_html($atts['title']); ?></h4>
+            <?php if (!empty($image_html)) echo $image_html; // Hiển thị ảnh nếu có ?>
+            <div class="timeline-description">
+                <?php echo $content_html; // Đã wpautop ?>
             </div>
         </div>
-        <?php
-        return ob_get_clean();
-    }
+    </div>
+    <?php
+    return ob_get_clean();
+}
 } // Kết thúc Class

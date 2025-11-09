@@ -128,7 +128,7 @@
         <div class="tool-panel results-panel">
             <div class="control-group">
                 <label for="point-name">2. Đặt Tên Cơ Sở (ví dụ: CĂN HỘ):</label>
-                <input type="text" id="point-name" value="unit">
+                <input type="text" id="point-name" value="CĂN HỘ">
             </div>
             
             <div class="result-group">
@@ -197,7 +197,9 @@
 
                 const baseName = pointNameInput.value.trim() || 'unit';
                 const formattedCounter = String(pointCounter).padStart(2, '0');
-                const pointName = `${baseName} ${formattedCounter}`;
+                
+                // [ĐÃ SỬA] Thay đổi logic nối chuỗi (dùng gạch nối)
+                const pointName = `${baseName}-${formattedCounter}`;
 
                 points.push({ name: pointName, left: left_percent, top: top_percent });
                 renderOutput();
@@ -205,7 +207,6 @@
             });
 
             copyBtn.addEventListener('click', () => {
-                // Logic sao chép vẫn giữ nguyên, vì nó sao chép từ textarea#output-css
                 outputTextarea.select();
                 document.execCommand('copy');
                 copyBtn.textContent = 'Đã sao chép!';
@@ -217,7 +218,6 @@
             function renderOutput() {
                 imageContainer.querySelectorAll('.click-point').forEach(p => p.remove());
                 
-                // [THAY ĐỔI] Đổi tên biến `cssCode` thành `coordinateData` cho rõ nghĩa
                 let coordinateData = '';
                 let historyHTML = '';
                 
@@ -229,18 +229,14 @@
                     pointDiv.textContent = index + 1;
                     imageContainer.appendChild(pointDiv);
                     
-                    // Giữ nguyên logic tạo key CSS an toàn
-                    let cssKey = point.name.toLowerCase()
-                                     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                                     .replace(/đ/g, "d")
-                                     .replace(/ /g, '-')
-                                     .replace(/[^a-z0-9-]/g, '');
+                    // [ĐÃ SỬA] Gán trực tiếp tên, không chuyển đổi
+                    let cssKey = point.name;
 
                     // Dữ liệu này được đưa vào textarea
                     coordinateData += `${cssKey}: left: ${point.left.toFixed(2)}%; top: ${point.top.toFixed(2)}%;\n`;
                     
-                    // Dữ liệu này được đưa vào danh sách xem
-                    historyHTML += `<li><strong>${point.name} (Key: ${cssKey})</strong>: left: ${point.left.toFixed(2)}%; top: ${point.top.toFixed(2)}%;</li>`;
+                    // [ĐÃ SỬA] Hiển thị gọn gàng
+                    historyHTML += `<li><strong>${cssKey}</strong>: left: ${point.left.toFixed(2)}%; top: ${point.top.toFixed(2)}%;</li>`;
                 });
                 
                 outputTextarea.value = coordinateData; // Cập nhật textarea (để sao chép)
@@ -252,7 +248,7 @@
             function clearAll() {
                 points = [];
                 pointCounter = 1;
-                pointNameInput.value = 'unit';
+                pointNameInput.value = 'CĂN HỘ'; // Đặt lại giá trị mặc định
                 outputTextarea.value = '/* Click vào ảnh để bắt đầu... */';
                 renderOutput(); 
             }

@@ -1,13 +1,16 @@
 <?php
 // File: inc/r2/class-r2-migration.php
-// ĐÃ SỬA LỖI: Thay thế spawn_cron() bằng wp_remote_post() để kích hoạt cron job đáng tin cậy hơn.
+// PHIÊN BẢN TỐI ƯU (STATELESS BATCHING) - V2 (FIX BUG "STUCK AT 0")
+// - Giữ nguyên logic Stateless (Không query nặng, không transient).
+// - Khôi phục lại logic "FIX LỖI LOCAL": Chạy process_batch()
+//   đồng bộ ngay trong ajax_start_migration() để đảm bảo
+//   Batch 1 luôn chạy và Batch 2 luôn được lên lịch.
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Tuancele_R2_Migration {
 
     const STATUS_OPTION = 'tuancele_r2_migration_status';
-    const QUEUE_TRANSIENT = 'tuancele_r2_migration_queue';
     const BATCH_SIZE = 5;
     const NONCE_ACTION = 'r2_migration_nonce';
 
@@ -27,9 +30,6 @@ final class Tuancele_R2_Migration {
         }
     }
 
-    /**
-     * [SỬA LỖI] Kích hoạt WP-Cron bằng một yêu cầu non-blocking
-     */
     private function trigger_cron() {
         wp_remote_post(site_url('wp-cron.php?doing_wp_cron'), [
             'timeout'   => 0.01,
@@ -38,93 +38,141 @@ final class Tuancele_R2_Migration {
         ]);
     }
 
+    /**
+     * [ĐÃ TỐI ƯU V2] Bắt đầu quá trình di chuyển.
+     * Đếm, đặt cờ, và chạy batch đầu tiên ngay lập tức.
+     */
     public function ajax_start_migration() {
         $this->verify_nonce();
 
+        // 1. Chỉ query để ĐẾM
         $query = new WP_Query([
-            'post_type'      => 'attachment', 'post_status'    => 'inherit', 'posts_per_page' => -1, 'fields'         => 'ids',
+            'post_type'      => 'attachment',
+            'post_status'    => 'inherit',
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
             'meta_query'     => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']],
         ]);
-        $attachment_ids = $query->posts;
+        $local_count = $query->found_posts;
 
-        if (empty($attachment_ids)) {
+        if ( empty($local_count) ) {
             wp_send_json_error(['message' => 'Không tìm thấy tệp nào cần di chuyển.']);
         }
 
-        set_transient(self::QUEUE_TRANSIENT, $attachment_ids, DAY_IN_SECONDS);
-        update_option(self::STATUS_OPTION, ['running' => true, 'total' => count($attachment_ids), 'processed' => 0]);
+        // 2. Cập nhật trạng thái
+        update_option(self::STATUS_OPTION, [
+            'running' => true, 
+            'total' => $local_count, 
+            'processed' => 0
+        ]);
 
+        // 3. [KHÔI PHỤC LOGIC GỐC]
+        // Lên lịch Batch 1 (để cron có thể tự chạy nếu AJAX bị hủy)
         wp_schedule_single_event(time(), 'tuancele_r2_run_migration_batch');
         
-        // [FIX LỖI LOCAL]
-        // Thay vì lập lịch và hy vọng cron trigger hoạt động,
-        // chúng ta sẽ chạy batch đầu tiên ngay lập tức (đồng bộ) trong
-        // chính AJAX request này.
+        // Chạy Batch 1 ngay lập tức, đồng bộ.
+        // Hàm này sẽ tự lên lịch cho Batch 2.
         $this->process_batch();
 
-        // Hàm process_batch() ở trên sẽ tự động lập lịch cho batch_tiếp_theo (nếu cần).
-        // Chúng ta vẫn cần trigger cron, nhưng bây giờ là để chạy batch thứ 2,
-        // không phải batch đầu tiên.
+        // 4. Kích hoạt cron (để chạy Batch 2 nếu Batch 1 thành công)
         $this->trigger_cron();
 
-        // Trả về kết quả ngay. JS sẽ tự động
-        // gọi `updateStatus` và thấy 5 file đã được xử lý.
+        // 5. Trả về thành công
+        // JS sẽ tự động gọi ajax_get_status và thấy 5 tệp đã được xử lý.
         wp_send_json_success();
     }
 
+    /**
+     * [ĐÃ TỐI ƯU] Xử lý một lô tệp (chạy bằng WP-Cron).
+     */
     public function process_batch() {
         $status = get_option(self::STATUS_OPTION, []);
-        if (empty($status['running'])) { return; }
+        if (empty($status['running'])) { 
+            return;
+        }
 
-        $queue = get_transient(self::QUEUE_TRANSIENT);
-        if ($queue === false) {
+        // 1. [MỚI] Tự query lô (batch) của chính nó
+        $batch_query = new WP_Query([
+            'post_type'      => 'attachment',
+            'post_status'    => 'inherit',
+            'posts_per_page' => self::BATCH_SIZE,
+            'fields'         => 'ids',
+            'meta_query'     => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']],
+            'orderby'        => 'ID',
+            'order'          => 'ASC'
+        ]);
+        
+        $batch_ids = $batch_query->posts;
+
+        // 2. Kiểm tra xem đã hoàn thành chưa
+        if ( ! $batch_query->have_posts() || empty($batch_ids) ) {
+            // Đã hết tệp, dừng lại
             update_option(self::STATUS_OPTION, array_merge($status, ['running' => false]));
             wp_clear_scheduled_hook('tuancele_r2_run_migration_batch');
             return;
         }
 
-        $batch = array_splice($queue, 0, self::BATCH_SIZE);
-        foreach ($batch as $attachment_id) {
+        // 3. Xử lý lô đã tìm thấy
+        foreach ($batch_ids as $attachment_id) {
             if (method_exists($this->r2_actions, 'offload_attachment')) {
                  $this->r2_actions->offload_attachment($attachment_id);
             }
+            // Thêm một khoảng dừng nhỏ để tránh làm quá tải API
+            sleep(0.1); 
         }
 
-        $status['processed'] += count($batch);
+        // 4. Cập nhật tiến trình
+        $new_processed = ($status['processed'] ?? 0) + count($batch_ids);
+        $status['processed'] = min($new_processed, $status['total']); 
         update_option(self::STATUS_OPTION, $status);
-        set_transient(self::QUEUE_TRANSIENT, $queue, DAY_IN_SECONDS);
 
-        if (!empty($queue)) {
+        // 5. Lên lịch cho lô tiếp theo
+        // (Kiểm tra lại xem sau khi xử lý lô này, còn tệp nào không)
+        $remaining_query = new WP_Query([
+            'post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => 1, 'fields' => 'ids',
+            'meta_query' => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']],
+        ]);
+
+        if ( $remaining_query->have_posts() ) {
+            // Vẫn còn tệp, lên lịch tiếp
             wp_schedule_single_event(time() + 2, 'tuancele_r2_run_migration_batch');
-            
-            // [SỬA LỖI] Kích hoạt cron
-            $this->trigger_cron();
-
+            $this->trigger_cron(); // Kích hoạt cron cho lô tiếp theo
         } else {
+            // Đã hết tệp, dừng lại
             update_option(self::STATUS_OPTION, array_merge($status, ['running' => false]));
+            wp_clear_scheduled_hook('tuancele_r2_run_migration_batch');
         }
     }
 
+    /**
+     * [ĐÃ TỐI ƯU] Hủy bỏ quá trình.
+     */
     public function ajax_cancel_migration() {
         $this->verify_nonce();
         
         wp_clear_scheduled_hook('tuancele_r2_run_migration_batch');
-        delete_transient(self::QUEUE_TRANSIENT);
+        
+        // [ĐÃ XÓA] Không cần transient
+        
         $status = get_option(self::STATUS_OPTION, []);
         update_option(self::STATUS_OPTION, array_merge($status, ['running' => false]));
         wp_send_json_success();
     }
 
+    /**
+     * [KHÔNG THAY ĐỔI] Lấy trạng thái.
+     */
     public function ajax_get_status() {
         $this->verify_nonce();
         
         $status = get_option(self::STATUS_OPTION, ['running' => false, 'total' => 0, 'processed' => 0]);
         
         $local_query = new WP_Query([
-            'post_type'      => 'attachment', 'post_status'    => 'inherit', 'posts_per_page' => -1, 'fields'         => 'ids',
+            'post_type'      => 'attachment', 'post_status'    => 'inherit', 
+            'posts_per_page' => 1, 'fields'         => 'ids',
             'meta_query'     => [['key' => '_tuancele_r2_offloaded', 'compare' => 'NOT EXISTS']],
         ]);
-        $local_count = $local_query->post_count;
+        $local_count = $local_query->found_posts;
         
         $status['local_files_remaining'] = $local_count;
 

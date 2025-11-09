@@ -180,7 +180,12 @@ get_header();
     <p>No content found.</p>
 <?php endif; ?>
 
-<?php if (function_exists('tuancele_display_related_posts')) { tuancele_display_related_posts(); } ?>
+<?php 
+// [ĐÃ SỬA] Gọi hàm mới cho Tin BĐS liên quan
+if (function_exists('tuancele_display_related_properties')) { 
+    tuancele_display_related_properties(); 
+} 
+?>
 <?php if ( comments_open() || get_comments_number() ) : comments_template(); endif; ?>
 
 <?php

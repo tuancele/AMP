@@ -90,3 +90,80 @@ function tuancele_display_related_posts() {
         </section>
     <?php endif; wp_reset_postdata();
 }
+/**
+ * =========================================================================
+ * [MỚI] HIỂN THỊ TIN BẤT ĐỘNG SẢN LIÊN QUAN (THEO DỰ ÁN HOẶC KHU VỰC)
+ * =========================================================================
+ */
+function tuancele_display_related_properties() {
+    // Chỉ chạy trên trang single 'property'
+    if ( ! is_singular('property') ) {
+        return;
+    }
+
+    global $post;
+    $post_id = $post->ID;
+
+    // 1. Lấy các giá trị meta để so sánh
+    $project_id = get_post_meta( $post_id, '_project_id', true );
+    $locality = get_post_meta( $post_id, '_property_address_locality', true );
+
+    $query_args = [
+        'post_type'      => 'property',
+        'post_status'    => 'publish',
+        'posts_per_page' => 3, // Hiển thị 3 tin liên quan
+        'post__not_in'   => [$post_id], // Loại trừ chính nó
+        'orderby'        => 'rand', // Sắp xếp ngẫu nhiên
+        'meta_query'     => [
+            'relation' => 'OR', // Chỉ cần khớp 1 trong 2 điều kiện
+        ],
+    ];
+
+    $has_query = false;
+
+    // 2. Ưu tiên 1: Tìm các tin BĐS cùng Dự án
+    if ( ! empty( $project_id ) ) {
+        $query_args['meta_query'][] = [
+            'key'     => '_project_id',
+            'value'   => $project_id,
+            'compare' => '=',
+        ];
+        $has_query = true;
+    }
+
+    // 3. Ưu tiên 2: Tìm các tin BĐS cùng Quận/Huyện
+    if ( ! empty( $locality ) ) {
+        $query_args['meta_query'][] = [
+            'key'     => '_property_address_locality',
+            'value'   => $locality,
+            'compare' => '=',
+        ];
+        $has_query = true;
+    }
+    
+    // 4. Nếu không có Project ID VÀ không có Quận/Huyện, không thể tìm tin liên quan
+    if ( ! $has_query ) {
+        return;
+    }
+
+    $related_query = new WP_Query( $query_args );
+
+    if ( $related_query->have_posts() ) : 
+    ?>
+        <section class="related-posts-section">
+            <h2 class="related-posts-title">Tin Bất động sản Liên quan</h2>
+            <div class="posts-grid-container">
+                <?php 
+                while ( $related_query->have_posts() ) : $related_query->the_post();
+                    // Tái sử dụng content card hoàn hảo
+                    get_template_part('template-parts/content-card'); 
+                endwhile; 
+                ?>
+            </div>
+        </section>
+    <?php 
+    endif; 
+    
+    // 5. Khôi phục lại query gốc của trang
+    wp_reset_postdata();
+}
