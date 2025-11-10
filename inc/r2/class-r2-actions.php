@@ -54,6 +54,14 @@ final class Tuancele_R2_Actions {
         
         $upload_dir = wp_upload_dir();
         $success = true;
+        // --- BẮT ĐẦU ĐOẠN CODE MỚI ---
+        // Lấy cài đặt Cache-Control từ options
+        $cache_control = $this->options['cache_control'] ?? '';
+        if ( empty( $cache_control ) ) {
+            // Sử dụng giá trị mặc định (1 năm) nếu trường này bị để trống
+            $cache_control = 'public, max-age=31536000';
+        }
+        // --- KẾT THÚC ĐOẠN CODE MỚI ---
 
         foreach ($files_to_process as $file) {
             $local_path = $file['path'];

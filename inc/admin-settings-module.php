@@ -184,7 +184,7 @@ final class AMP_Admin_Settings_Module {
         add_settings_field('zoho_xnqsjsdp', 'Zoho Key (xnQsjsdp)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xnqsjsdp']);
         add_settings_field('zoho_xmiwtld', 'Zoho Key (xmIwtLD)', [ $this, 'integrations_field_callback' ], 'tuancele-amp-integrations', 'tuancele_integrations_zoho_section', ['id' => 'zoho_xmiwtld']);
         
-        add_settings_section('tuancele_integrations_gtm_section', 'Tích hợp Google (GA4 & GTM)', null, 'tuancele-amp-integrations');
+        add_settings_section('tuancele_integrations_gtm_section', 'Tích hợp Google Tag Manager', null, 'tuancele-amp-integrations');
         
         // Trường GTM (MỚI)
         add_settings_field(
@@ -197,23 +197,7 @@ final class AMP_Admin_Settings_Module {
                 'id' => 'gtm_id', 
                 'type' => 'text', 
                 'placeholder' => 'GTM-XXXXXXX',
-                'desc' => 'Nhập GTM ID của bạn. Đây là cách được khuyến nghị. Bạn sẽ cấu hình GA4, Facebook Pixel... bên trong GTM.'
-            ]
-        );
-
-        // Trường GA4 (Cũ - giữ lại làm fallback)
-            add_settings_field(
-            'ga4_measurement_id', 
-            'Mã theo dõi GA4 (Fallback)', 
-            [ $this, 'integrations_field_callback' ], 
-            'tuancele-amp-integrations', 
-            'tuancele_integrations_gtm_section', 
-            [
-                'id' => 'ga4_measurement_id', 
-                'type' => 'text', 
-                'placeholder' => 'G-XXXXXXXXXX',
-                // [ĐÃ XÓA] Dòng 'default'
-                'desc' => 'CHỈ SỬ DỤNG nếu bạn KHÔNG dùng GTM. Nếu đã điền GTM ID ở trên, hãy xóa trống ô này.'
+                'desc' => 'Nhập GTM ID của bạn (ví dụ: GTM-XXXXXXX). Trang web sẽ sử dụng mã này để tải cấu hình GTM cho AMP.'
             ]
         );
 
@@ -396,6 +380,13 @@ final class AMP_Admin_Settings_Module {
             'bucket' => ['label' => 'Tên Bucket'], 
             'endpoint' => ['label' => 'Endpoint'], 
             'public_url' => ['label' => 'Public URL'], 
+            // --- BẮT ĐẦU ĐOẠN CODE MỚI ---
+            'cache_control' => [ 
+                'label' => 'Cache-Control Header',
+                'type' => 'text',
+                'placeholder' => 'public, max-age=31536000',
+                'desc' => 'Metadata cho cache trình duyệt. Để trống để dùng giá trị mặc định: <code>public, max-age=31536000</code> (1 năm).'
+            ],
             'delete_local_file' => ['label' => 'Xóa file gốc', 'type' => 'checkbox'], 
             'enable_webp_conversion' => ['label' => 'Chuyển sang WebP', 'type' => 'checkbox']
         ];
@@ -635,22 +626,28 @@ final class AMP_Admin_Settings_Module {
              echo '<strong>Trạng thái kết nối: <span style="color:#ffc107;">Chưa kiểm tra.</span></strong>';
         }
     }
-    public function r2_field_callback($args) {
+public function r2_field_callback($args) {
         $options = get_option('tuancele_r2_settings', []);
         $id = $args['id'];
         $value = $options[$id] ?? '';
         $type = $args['type'] ?? 'text';
+        $placeholder = $args['placeholder'] ?? ''; // Lấy placeholder
 
         switch ($type) {
             case 'checkbox':
                 echo '<label><input type="checkbox" id="tuancele_r2_' . esc_attr($id) . '" name="tuancele_r2_settings[' . esc_attr($id) . ']" value="on" ' . checked('on', $value, false) . '></label>';
                 break;
             case 'password':
-                echo '<input type="password" id="tuancele_r2_' . esc_attr($id) . '" name="tuancele_r2_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" />';
+                echo '<input type="password" id="tuancele_r2_' . esc_attr($id) . '" name="tuancele_r2_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" autocomplete="new-password" placeholder="' . esc_attr($placeholder) . '" />';
                 break;
             default:
-                echo '<input type="text" id="tuancele_r2_' . esc_attr($id) . '" name="tuancele_r2_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" />';
+                echo '<input type="text" id="tuancele_r2_' . esc_attr($id) . '" name="tuancele_r2_settings[' . esc_attr($id) . ']" value="' . esc_attr($value) . '" class="regular-text" placeholder="' . esc_attr($placeholder) . '" />';
                 break;
+        }
+        
+        if (!empty($args['desc'])) {
+            // Sử dụng wp_kses_post để cho phép các thẻ an toàn như <code>, <br>, <strong>
+            echo '<p class="description">' . wp_kses_post($args['desc']) . '</p>';
         }
     }
     public function r2_migration_section_callback() {
