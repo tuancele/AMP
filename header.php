@@ -55,57 +55,19 @@ $is_ab_test_valid = ( ! empty( $ab_test_settings ) && substr( trim($ab_test_sett
 
 <?php
 // =========================================================================
-// [BẮT ĐẦU FIX GTM/ANALYTICS]
+// [FIX GTM] Tải GTM ID từ cài đặt
 // =========================================================================
-
-// Lấy cài đặt GTM và GA4 từ options
 $integration_options = get_option('tuancele_integrations_settings', []);
 $gtm_id = $integration_options['gtm_id'] ?? '';
-$ga4_id = $integration_options['ga4_measurement_id'] ?? ''; // Lấy ID GA4 (đã xóa default)
 
-// Ưu tiên GTM ID, nếu không có thì mới dùng GA4 ID
-$main_tracking_id = ! empty( $gtm_id ) ? $gtm_id : $ga4_id;
-
-// Chỉ in khối <amp-analytics> nếu có ID (GTM hoặc GA4)
-if ( ! empty( $main_tracking_id ) ) : 
+// Chỉ in khối <amp-analytics> nếu có GTM ID
+if ( ! empty( $gtm_id ) ) : 
 ?>
-<amp-analytics type="gtag" data-credentials="include">
-<script type="application/json">
-{
- "vars": {
-  "gtag_id": "<?php echo esc_js( $main_tracking_id ); ?>",
-  "config": {
-   "<?php echo esc_js( $main_tracking_id ); ?>": { "groups": "default" }
-  }
- },
- <?php // [SỬA LỖI] Luôn thêm trigger "pageview" mặc định ?>
- "triggers": {
-  "defaultPageview": {
-   "on": "visible",
-   "request": "pageview"
-  }
-  <?php 
-  // Gộp trigger A/B test (nếu có)
-  if ( $is_ab_test_valid ) : 
-  ?>
-  ,"trackExperimentView": {
-   "on": "amp-experiment.view",
-   "request": "event",
-   "vars": {
-    "event_name": "experiment_view",
-    "event_category": "AMP Experiment"
-    <?php // AMP tự động thêm "experiment_name" và "variant_name" ?>
-   }
-  }
-  <?php endif; // Kết thúc A/B test triggers ?>
- }
-}
-</script>
-</amp-analytics>
+<amp-analytics config="https://www.googletagmanager.com/amp.json?id=<?php echo esc_js( $gtm_id ); ?>&gtm.url=SOURCE_URL" data-credentials="include"></amp-analytics>
 <?php
 endif;
 // =========================================================================
-// [KẾT THÚC FIX GTM/ANALYTICS]
+// [KẾT THÚC FIX GTM]
 // =========================================================================
 ?>
 

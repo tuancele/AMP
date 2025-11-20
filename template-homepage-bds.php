@@ -80,10 +80,16 @@ $banner_url = get_post_meta($page_id, '_bds_banner_url', true);
     endif;
     ?>
 
-    <?php
-    // Phần Banner
+<?php
+    // Phần Banner (ĐÃ TỐI ƯU LCP)
     if ( $banner_img_id > 0 ) :
+        // Lấy ảnh gốc
         $banner_img_data = wp_get_attachment_image_src($banner_img_id, 'banner-main');
+        // [MỚI] Lấy srcset (các kích thước ảnh con)
+        $banner_srcset = wp_get_attachment_image_srcset($banner_img_id, 'banner-main');
+        // [MỚI] Lấy sizes (quy tắc chọn ảnh)
+        $banner_sizes = wp_get_attachment_image_sizes($banner_img_id, 'banner-main');
+
         if ($banner_img_data) : 
             $is_clickable = !empty($banner_url);
             $tag = $is_clickable ? 'a' : 'div';
@@ -94,8 +100,13 @@ $banner_url = get_post_meta($page_id, '_bds_banner_url', true);
                     <amp-img src="<?php echo esc_url($banner_img_data[0]); ?>"
                              width="<?php echo esc_attr($banner_img_data[1]); ?>"
                              height="<?php echo esc_attr($banner_img_data[2]); ?>"
+                             /* [MỚI] Thêm srcset và sizes để mobile tải ảnh nhỏ hơn */
+                             srcset="<?php echo esc_attr($banner_srcset); ?>"
+                             sizes="<?php echo esc_attr($banner_sizes); ?>"
                              layout="responsive"
-                             alt="Banner quảng cáo">
+                             alt="Banner quảng cáo"
+                             /* [MỚI] Báo cho trình duyệt ưu tiên tải ảnh này ngay lập tức */
+                             data-fetchpriority="high">
                     </amp-img>
                 </<?php echo $tag; ?>>
             </section>

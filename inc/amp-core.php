@@ -7,6 +7,7 @@
  * - Đã vô hiệu hóa logic tải 'amp-accordion' (đã fix).
  * - Đã vô hiệu hóa logic tải 'amp-lightbox'
  * vì script này đã được tải toàn cục trong header.php.
+ * * [CẬP NHẬT] Tự động xử lý thẻ <video> thành <amp-video>.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -261,6 +262,24 @@ function amp_filter_the_content($content) {
         }
         return '<amp-iframe ' . $attr . '><div placeholder style="background:#f0f4f8 url(/wp-includes/images/spinner.gif) no-repeat center; background-size: 20px; display:flex; align-items:center; justify-content:center;">Loading...</div></amp-iframe>';
     }, $content);
+
+    // [THÊM MỚI] Tự động chuyển đổi <video> sang <amp-video>
+    $content = preg_replace_callback('/<video([^>]*?)>(.*?)<\/video>/is', function($matches) {
+        $attr = $matches[1];
+        $inner_html = $matches[2];
+
+        // Tự động thêm layout responsive nếu chưa có
+        if (strpos($attr, 'layout=') === false) {
+            $attr .= ' layout="responsive"';
+        }
+        // Thêm kích thước mặc định nếu thiếu (AMP yêu cầu width/height cụ thể)
+        if (strpos($attr, 'width=') === false) $attr .= ' width="640"';
+        if (strpos($attr, 'height=') === false) $attr .= ' height="360"';
+
+        // Thay thế tag
+        return '<amp-video ' . $attr . '>' . $inner_html . '</amp-video>';
+    }, $content);
+
     return $content;
 }
 add_filter('the_content', 'amp_filter_the_content', 99);
@@ -331,6 +350,10 @@ function tuancele_register_conditional_assets() {
         $scripts_to_load['amp-carousel'] = 'https://cdn.ampproject.org/v0/amp-carousel-0.2.js';
     }
 
+    // [THÊM MỚI] Tự động nạp script amp-video nếu có thẻ video trong nội dung
+    if ( has_shortcode( $content, 'video' ) || strpos( $content, '<video' ) !== false || strpos( $content, 'amp-video' ) !== false ) {
+        $scripts_to_load['amp-video'] = 'https://cdn.ampproject.org/v0/amp-video-0.1.js';
+    }
 
     // [SỬA LỖI SCRIPT TRÙNG LẶP]
     // Vô hiệu hóa 3 dòng này, vì amp-accordion đã được tải toàn cục trong header.php

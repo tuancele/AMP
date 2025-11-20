@@ -231,7 +231,25 @@ function tuancele_register_property_cpt() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        // --- BẮT ĐẦU SỬA ĐỔI ---
+        'capability_type'       => 'property', // Đặt tên capability type mới
+        'capabilities' => array(
+            'publish_posts' => 'publish_properties',
+            'edit_posts' => 'edit_properties', // Sửa bài của mình (bất kể trạng thái)
+            'edit_others_posts' => 'edit_others_properties', // Sửa bài của người khác
+            'delete_posts' => 'delete_properties', // Xóa bài của mình
+            'delete_others_posts' => 'delete_others_properties', // Xóa bài của người khác
+            'read_private_posts' => 'read_private_properties',
+            'edit_post' => 'edit_property', // Quyền meta
+            'delete_post' => 'delete_property', // Quyền meta
+            'read_post' => 'read_property', // Quyền meta
+            
+            // Thêm các quyền publish/published quan trọng
+            'edit_published_posts' => 'edit_published_properties', // Sửa bài đã publish của mình
+            'delete_published_posts' => 'delete_published_properties', // Xóa bài đã publish của mình
+        ),
+        'map_meta_cap'        => true, // Rất quan trọng để các quyền hoạt động đúng
+        // --- KẾT THÚC SỬA ĐỔI ---
         'show_in_rest'          => true, 
         'rewrite'               => ['slug' => 'bat-dong-san'],
     ];
@@ -373,3 +391,81 @@ add_filter( 'login_headertext', 'my_custom_login_logo_url_title' );
 
 // TẠM THỜI: Xóa cache CSS
 delete_transient('tuancele_amp_css_cache_v2');
+
+
+/**
+ * =========================================================================
+ * [MỚI] CẤP QUYỀN TÙY CHỈNH CHO CỘNG TÁC VIÊN
+ * =========================================================================
+ */
+
+/**
+ * Cấp quyền tùy chỉnh cho Cộng tác viên & Admin đối với CPT 'property'.
+ * - Cộng tác viên: Cho phép tải media, sửa/xóa tin BĐS (property) của chính mình.
+ * - Admin: Cấp tất cả các quyền mới của CPT 'property' để quản lý.
+ */
+function tuancele_add_custom_caps() {
+    
+    // --- Cấp quyền cho CỘNG TÁC VIÊN (Contributor) ---
+    $contributor_role = get_role('contributor');
+    if ($contributor_role) {
+        
+        // 1. (Từ yêu cầu trước) Cho phép tải lên media
+        if (!$contributor_role->has_cap('upload_files')) {
+            $contributor_role->add_cap('upload_files');
+        }
+
+        // 2. Cho phép sửa tin BĐS (pending, draft) của chính mình
+        if (!$contributor_role->has_cap('edit_properties')) {
+            $contributor_role->add_cap('edit_properties'); 
+        }
+
+        // 3. (Yêu cầu mới) Cho phép sửa tin BĐS (ĐÃ PUBLISH) của chính mình
+        if (!$contributor_role->has_cap('edit_published_properties')) {
+            $contributor_role->add_cap('edit_published_properties'); 
+        }
+
+        // 4. (Tùy chọn) Cho phép xóa tin BĐS của chính mình (cả pending và publish)
+        if (!$contributor_role->has_cap('delete_properties')) {
+            $contributor_role->add_cap('delete_properties');
+        }
+        if (!$contributor_role->has_cap('delete_published_properties')) {
+            $contributor_role->add_cap('delete_published_properties');
+        }
+    }
+    
+    // --- Cấp quyền cho QUẢN TRỊ VIÊN (Administrator) ---
+    // (Quan trọng) Admin cần các quyền mới này để quản lý CPT
+    $admin_role = get_role('administrator');
+    if ($admin_role) {
+        $admin_role->add_cap('publish_properties');
+        $admin_role->add_cap('edit_properties');
+        $admin_role->add_cap('edit_others_properties');
+        $admin_role->add_cap('delete_properties');
+        $admin_role->add_cap('delete_others_properties');
+        $admin_role->add_cap('read_private_properties');
+        $admin_role->add_cap('edit_published_properties');
+        $admin_role->add_cap('delete_published_properties');
+        $admin_role->add_cap('edit_property');
+        $admin_role->add_cap('delete_property');
+        $admin_role->add_cap('read_property');
+    }
+
+    // (Tùy chọn) Cấp quyền tương tự cho Biên tập viên (Editor) nếu cần
+    $editor_role = get_role('editor');
+     if ($editor_role) {
+        $editor_role->add_cap('publish_properties');
+        $editor_role->add_cap('edit_properties');
+        $editor_role->add_cap('edit_others_properties');
+        $editor_role->add_cap('delete_properties');
+        $editor_role->add_cap('delete_others_properties');
+        $editor_role->add_cap('read_private_properties');
+        $editor_role->add_cap('edit_published_properties');
+        $editor_role->add_cap('delete_published_properties');
+        $editor_role->add_cap('edit_property');
+        $editor_role->add_cap('delete_property');
+        $editor_role->add_cap('read_property');
+    }
+}
+// Chạy hàm này một lần khi theme được kích hoạt (hoặc 'init')
+//add_action('init', 'tuancele_add_custom_caps');
